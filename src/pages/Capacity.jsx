@@ -10,6 +10,9 @@ import {
   TrendingUp,
   Filter,
   Lock,
+  Info,
+  Calculator,
+  CheckCircle2,
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 
@@ -134,8 +137,9 @@ export default function Capacity() {
 
   const deficitCount = useMemo(() => {
     return scopedHabitations.filter((h) => {
-      const status = h.capacity_status || h.capacityStatus;
-      return status === "Deficit" || status === "Critical Deficit";
+      const status = (h.capacity_status || h.capacityStatus || "").toLowerCase();
+      const def = Number(h.capacity_deficit ?? h.capacityDeficit ?? 0);
+      return def > 0 || status.includes("deficit") || status.includes("crit");
     }).length;
   }, [scopedHabitations]);
 
@@ -177,17 +181,26 @@ export default function Capacity() {
 
   /* ---------------- Capacity Distribution ---------------- */
   const capDistData = useMemo(() => {
-    const capDist = {};
+    const capDist = {
+      "Critical Deficit": 0,
+      Deficit: 0,
+      Warning: 0,
+      Adequate: 0,
+    };
 
     scopedHabitations.forEach((h) => {
-      const status = h.capacity_status || h.capacityStatus || "Adequate";
+      let status = h.capacity_status || h.capacityStatus || "Adequate";
+      if (status === "Critical") status = "Critical Deficit";
+      if (status === "Moderate") status = "Warning";
       capDist[status] = (capDist[status] || 0) + 1;
     });
 
-    return Object.entries(capDist).map(([name, value]) => ({
-      name,
-      value,
-    }));
+    return Object.entries(capDist)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({
+        name,
+        value,
+      }));
   }, [scopedHabitations]);
 
   /* ---------------- Loading ---------------- */
@@ -315,11 +328,21 @@ export default function Capacity() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Population vs Capacity */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm transition-colors">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">
-              {isNational
-                ? "Population vs Safe Capacity by District"
-                : `Population vs Safe Capacity Across ${districtScope} Settlements`}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  {isNational
+                    ? "Population vs Safe Capacity by District"
+                    : `Population vs Safe Capacity Across ${districtScope} Settlements`}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                  Formula: &Sigma; Population vs &Sigma; Safe Capacity
+                </p>
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800 self-start sm:self-auto">
+                Ratio = (Safe Cap / Pop) &times; 100
+              </span>
+            </div>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -366,11 +389,21 @@ export default function Capacity() {
 
           {/* Capacity Deficit Breakdown */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm transition-colors">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">
-              {isNational
-                ? "Capacity Deficit by District"
-                : `Net Deficit by ${districtScope} Settlement`}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  {isNational
+                    ? "Capacity Deficit by District"
+                    : `Net Deficit by ${districtScope} Settlement`}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                  Formula: &Delta; = max(0, Population &minus; Safe Capacity)
+                </p>
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800 self-start sm:self-auto">
+                Ranked Descending
+              </span>
+            </div>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -419,9 +452,19 @@ export default function Capacity() {
 
           {/* Capacity Status Distribution */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm transition-colors">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">
-              Capacity Status Distribution {districtScope ? `(${districtScope})` : "(National)"}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Capacity Status Distribution {districtScope ? `(${districtScope})` : "(National)"}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                  Formula: Share (%) = (Category Count / Total) &times; 100
+                </p>
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
+                National Distribution
+              </span>
+            </div>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -460,9 +503,19 @@ export default function Capacity() {
 
           {/* Status Breakdown List */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm transition-colors">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">
-              Capacity Status Breakdown
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  Capacity Status Breakdown
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                  Formula: Deficit Ratio = Deficit / Population
+                </p>
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800 self-start sm:self-auto">
+                NDMA Thresholds
+              </span>
+            </div>
             <div className="space-y-3">
               {capDistData.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">No status data available for current jurisdiction.</p>
@@ -490,6 +543,99 @@ export default function Capacity() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* NDMA Capacity Assessment Mathematical Formulations Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm mb-8 transition-colors">
+          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-slate-200 dark:border-slate-800">
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+              <Calculator className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                NDMA Capacity Assessment Mathematical Formulations & Standards
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Official algorithmic formulations powering all 4 capacity assessment metrics
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Population vs Safe Capacity */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  1. Pop vs Safe Capacity
+                </h4>
+              </div>
+              <div className="bg-slate-900 text-slate-100 p-2.5 rounded font-mono text-xs mb-2 overflow-x-auto">
+                P_district = &Sigma; P(h)<br />
+                C_district = &Sigma; C(h)<br />
+                Coverage = (C / P) &times; 100%
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Aggregates total ground census population vs certified safe shelter capacity across settlements within jurisdiction.
+              </p>
+            </div>
+
+            {/* 2. Capacity Deficit */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  2. Capacity Deficit
+                </h4>
+              </div>
+              <div className="bg-slate-900 text-slate-100 p-2.5 rounded font-mono text-xs mb-2 overflow-x-auto">
+                Deficit(h) = max(0, P &minus; C)<br />
+                Surplus(h) = max(0, C &minus; P)<br />
+                &Delta;_district = &Sigma; Deficit(h)
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Calculates shelter deficit per settlement to identify unhoused populations without relying on unsafe cross-terrain transit.
+              </p>
+            </div>
+
+            {/* 3. Status Distribution */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  3. Status Distribution
+                </h4>
+              </div>
+              <div className="bg-slate-900 text-slate-100 p-2.5 rounded font-mono text-xs mb-2 overflow-x-auto">
+                Share(S) = (N_s / N_total) &times; 100%<br />
+                N_s = Count of habitations<br />
+                N_total = Total settlements
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Pie distribution of settlements categorized across Critical Deficit, Deficit, Warning, and Adequate tiers.
+              </p>
+            </div>
+
+            {/* 4. Status Breakdown */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  4. Status Thresholds
+                </h4>
+              </div>
+              <div className="bg-slate-900 text-slate-100 p-2.5 rounded font-mono text-xs mb-2 overflow-x-auto">
+                Ratio = Deficit / Population<br />
+                &ge; 60% : Critical Deficit<br />
+                30% &minus; 59% : Deficit<br />
+                10% &minus; 29% : Warning<br />
+                &lt; 10% : Adequate
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                NDMA standard deficit ratio categorization triggering alert escalation, NDRF deployment, and temporary relief camps.
+              </p>
             </div>
           </div>
         </div>

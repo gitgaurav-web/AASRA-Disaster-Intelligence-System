@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from ml.ml_engine import predict_risk_ml, ml_model_available
 from risk_engine import calculate_risk_score, get_relocation_priority, get_risk_level
 from relocation_engine import calculate_relocation_priority, calculate_site_match_score
+from capacity_engine import calculate_capacity_status
 
 app = FastAPI(title="SIH Fully Dynamic Multi-Hazard Live Disaster Engine")
 
@@ -58,26 +59,30 @@ def fetch_live_multi_hazard_incidents():
                     risk_score = min(100.0, float(mag) * 20.0)
                     risk_level = "Critical" if mag > 4.5 else ("High" if mag > 3.5 else "Moderate")
                     
+                    pop = int(mag * 1400)
+                    safe_cap = 600
+                    cap_eval = calculate_capacity_status(pop, safe_cap)
+                    
                     incidents.append({
                         "id": idx_counter,
                         "name": props.get("title", f"Seismic Incident #{idx_counter}"),
                         "district": "Indian Seismic Zone",
-                        "population": int(mag * 1400),
+                        "population": pop,
                         "households": int(mag * 280),
                         "hazard": "Seismic Activity",
                         "hazard_exposure": round(risk_score, 1),
                         "vulnerability": "High",
                         "accessibility": "Restricted",
                         "emergency_access": "Limited",
-                        "safe_capacity": 600,
+                        "safe_capacity": safe_cap,
                         "latitude": lat,
                         "longitude": lon,
                         "risk_score": risk_score,
                         "risk_level": risk_level,
                         "priority": "Immediate" if mag > 4.5 else "Monitor",
-                        "capacity_deficit": 250,
-                        "capacity_surplus": 0,
-                        "capacity_status": "Critical",
+                        "capacity_deficit": cap_eval["capacity_deficit"],
+                        "capacity_surplus": cap_eval["capacity_surplus"],
+                        "capacity_status": cap_eval["capacity_status"],
                         "status": "Active"
                     })
                     idx_counter += 1
@@ -86,91 +91,94 @@ def fetch_live_multi_hazard_incidents():
 
     # 2. Hydrological Flood Zones
     flood_hotspots = [
-        {"name": "Brahmaputra Basin Flood Watch", "lat": 26.1445, "lon": 91.7362, "district": "Dibrugarh", "discharge": 12400.0},
-        {"name": "Kosi River Embankment Threat", "lat": 26.1554, "lon": 85.8918, "district": "Darbhanga", "discharge": 9500.0},
-        {"name": "Ganga Basin High Flow Alert", "lat": 25.3176, "lon": 82.9739, "district": "Varanasi", "discharge": 8200.0}
+        {"name": "Brahmaputra Basin Flood Watch", "lat": 26.1445, "lon": 91.7362, "district": "Dibrugarh", "discharge": 12400.0, "pop": 12500, "safe_cap": 1000},
+        {"name": "Kosi River Embankment Threat", "lat": 26.1554, "lon": 85.8918, "district": "Darbhanga", "discharge": 9500.0, "pop": 12500, "safe_cap": 1000},
+        {"name": "Ganga Basin High Flow Alert", "lat": 25.3176, "lon": 82.9739, "district": "Varanasi", "discharge": 8200.0, "pop": 12500, "safe_cap": 1000}
     ]
     for fh in flood_hotspots:
+        cap_eval = calculate_capacity_status(fh["pop"], fh["safe_cap"])
         incidents.append({
             "id": idx_counter,
             "name": fh["name"],
             "district": fh["district"],
-            "population": 12500,
+            "population": fh["pop"],
             "households": 2500,
             "hazard": "Flood",
             "hazard_exposure": 85.0,
             "vulnerability": "Critical",
             "accessibility": "Impassable",
             "emergency_access": "Boat / Air Only",
-            "safe_capacity": 1000,
+            "safe_capacity": fh["safe_cap"],
             "latitude": fh["lat"],
             "longitude": fh["lon"],
             "risk_score": 88.5,
             "risk_level": "Critical",
             "priority": "Immediate",
-            "capacity_deficit": 1500,
-            "capacity_surplus": 0,
-            "capacity_status": "Critical",
+            "capacity_deficit": cap_eval["capacity_deficit"],
+            "capacity_surplus": cap_eval["capacity_surplus"],
+            "capacity_status": cap_eval["capacity_status"],
             "status": "Active"
         })
         idx_counter += 1
 
     # 3. Live Landslide Risk Zones
     landslide_hotspots = [
-        {"name": "Chamoli Rockfall & Slope Instability", "lat": 30.4034, "lon": 79.3240, "district": "Chamoli"},
-        {"name": "Wayanad Sector Mudflow Hazard", "lat": 11.6854, "lon": 76.1320, "district": "Wayanad"}
+        {"name": "Chamoli Rockfall & Slope Instability", "lat": 30.4034, "lon": 79.3240, "district": "Chamoli", "pop": 4200, "safe_cap": 400},
+        {"name": "Wayanad Sector Mudflow Hazard", "lat": 11.6854, "lon": 76.1320, "district": "Wayanad", "pop": 4200, "safe_cap": 400}
     ]
     for lh in landslide_hotspots:
+        cap_eval = calculate_capacity_status(lh["pop"], lh["safe_cap"])
         incidents.append({
             "id": idx_counter,
             "name": lh["name"],
             "district": lh["district"],
-            "population": 4200,
+            "population": lh["pop"],
             "households": 850,
             "hazard": "Landslide",
             "hazard_exposure": 79.0,
             "vulnerability": "High",
             "accessibility": "Blocked",
             "emergency_access": "Clearing Required",
-            "safe_capacity": 400,
+            "safe_capacity": lh["safe_cap"],
             "latitude": lh["lat"],
             "longitude": lh["lon"],
             "risk_score": 81.0,
             "risk_level": "Critical",
             "priority": "Immediate",
-            "capacity_deficit": 450,
-            "capacity_surplus": 0,
-            "capacity_status": "Critical",
+            "capacity_deficit": cap_eval["capacity_deficit"],
+            "capacity_surplus": cap_eval["capacity_surplus"],
+            "capacity_status": cap_eval["capacity_status"],
             "status": "Active"
         })
         idx_counter += 1
 
     # 4. Forest Fire Hotspots
     fire_hotspots = [
-        {"name": "Simlipal Reserve Wildfire Hotspot", "lat": 21.9397, "lon": 86.3264, "district": "Mayurbhanj"},
-        {"name": "Bandipur Forest Thermal Anomaly", "lat": 11.8540, "lon": 76.6288, "district": "Chamarajanagar"}
+        {"name": "Simlipal Reserve Wildfire Hotspot", "lat": 21.9397, "lon": 86.3264, "district": "Mayurbhanj", "pop": 2800, "safe_cap": 300},
+        {"name": "Bandipur Forest Thermal Anomaly", "lat": 11.8540, "lon": 76.6288, "district": "Chamarajanagar", "pop": 2800, "safe_cap": 300}
     ]
     for fh in fire_hotspots:
+        cap_eval = calculate_capacity_status(fh["pop"], fh["safe_cap"])
         incidents.append({
             "id": idx_counter,
             "name": fh["name"],
             "district": fh["district"],
-            "population": 2800,
+            "population": fh["pop"],
             "households": 500,
             "hazard": "Forest Fire",
             "hazard_exposure": 74.0,
             "vulnerability": "Moderate",
             "accessibility": "Remote",
             "emergency_access": "Aerial / Ground Teams",
-            "safe_capacity": 300,
+            "safe_capacity": fh["safe_cap"],
             "latitude": fh["lat"],
             "longitude": fh["lon"],
             "risk_score": 76.0,
             "risk_level": "High",
             "priority": "Short-Term",
-            "capacity_deficit": 200,
-            "capacity_surplus": 0,
-            "capacity_status": "Moderate",
+            "capacity_deficit": cap_eval["capacity_deficit"],
+            "capacity_surplus": cap_eval["capacity_surplus"],
+            "capacity_status": cap_eval["capacity_status"],
             "status": "Active"
         })
         idx_counter += 1
@@ -523,8 +531,11 @@ def register_habitation(data: HabitationCreateRequest):
     risk_level = get_risk_level(risk_score)
     priority = get_relocation_priority(risk_score)
     
+    cap_eval = calculate_capacity_status(data.population, data.safe_capacity)
+    habit_id = int(time.time())
+
     new_habit = {
-        "id": int(time.time()),
+        "id": habit_id,
         "name": data.name,
         "district": data.district,
         "population": data.population,
@@ -540,9 +551,9 @@ def register_habitation(data: HabitationCreateRequest):
         "risk_score": risk_score,
         "risk_level": risk_level,
         "priority": priority,
-        "capacity_deficit": max(0, data.population - data.safe_capacity),
-        "capacity_surplus": max(0, data.safe_capacity - data.population),
-        "capacity_status": "Critical Deficit" if data.population > data.safe_capacity else "Adequate",
+        "capacity_deficit": cap_eval["capacity_deficit"],
+        "capacity_surplus": cap_eval["capacity_surplus"],
+        "capacity_status": cap_eval["capacity_status"],
         "status": "Active"
     }
     
