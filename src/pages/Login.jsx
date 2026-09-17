@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, KeyRound, AlertCircle, RefreshCw } from 'lucide-react';
+import { LogIn, KeyRound, AlertCircle, RefreshCw, Shield, Building, Lock, ArrowRight, UserCheck } from 'lucide-react';
 import Logo from '@/components/Logo';
 
 export default function Login() {
@@ -22,7 +22,7 @@ export default function Login() {
     setAuthError('');
 
     try {
-      // Step 1: Real FastAPI Authentication Request
+      // Real FastAPI Authentication Request
       let res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,20 +39,21 @@ export default function Login() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Authentication failed: Invalid government credentials.');
+        throw new Error(errData.detail || 'Authentication failed: Invalid government officer credentials.');
       }
 
       const data = await res.json();
 
-      // Step 2: Store real authenticated session payload
+      // Store real authenticated session payload
       localStorage.setItem('dss_auth_user', JSON.stringify(data.user));
       localStorage.setItem('dss_user_role', data.user.role);
+      localStorage.setItem('diastra_portal_mode', 'gov');
 
-      // Step 3: Trigger global state updates across Navbar and other pages
+      // Trigger global state updates across Navbar and other pages
       window.dispatchEvent(new Event('authChanged'));
       window.dispatchEvent(new Event('roleChanged'));
 
-      navigate('/relocation');
+      navigate('/gov');
     } catch (err) {
       console.error(err);
       setAuthError(err.message || 'Server connection error. Please verify backend is running.');
@@ -62,106 +63,157 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem-120px)] flex items-center justify-center px-4 py-8 bg-slate-50/50">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
-          <div className="text-center mb-6">
-            <div className="w-14 h-14 flex items-center justify-center mx-auto mb-3 bg-blue-50 rounded-2xl p-2 border border-blue-100">
-              <Logo className="w-10 h-10" variant="dark" />
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Official Gov Authentication</h1>
-            <p className="text-xs text-slate-500 mt-1">NDMA Sentinel Decision Support System</p>
-          </div>
+    <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-10 bg-slate-100 dark:bg-slate-950 transition-colors">
+      <div className="w-full max-w-lg space-y-4">
+        
+        {/* Government Officer Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+          {/* Tricolor Stripe */}
+          <div className="h-1.5 bg-gradient-to-r from-amber-500 via-white to-emerald-600" />
 
-          {/* Pre-Provisioned Enterprise Directory Accounts */}
-          <div className="mb-6 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              NIC Provisioned Roles (Demo Directory):
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => quickFill('dg.ndma@nic.in')}
-                className="p-2 text-left bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition"
-              >
-                <span className="font-bold text-slate-800 block text-[11px]">NDMA National</span>
-                <span className="text-[10px] text-slate-400 block truncate">dg.ndma@nic.in</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => quickFill('dm.chamoli@uk.gov.in')}
-                className="p-2 text-left bg-white border border-slate-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition"
-              >
-                <span className="font-bold text-slate-800 block text-[11px]">DM Chamoli</span>
-                <span className="text-[10px] text-slate-400 block truncate">dm.chamoli@uk.gov.in</span>
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2 text-center">
-              Authorized Test Key: <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-700 font-bold">Password@123</code>
-            </p>
-          </div>
-
-          {/* Backend Error Alert Box */}
-          {authError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2.5 text-xs text-red-800 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-              <span>{authError}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Official NIC / Gov Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="officer@nic.in"
-                className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/40"
-              />
+          <div className="p-6 sm:p-8">
+            {/* Header with National Crest motif */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 flex items-center justify-center mx-auto mb-3 bg-slate-900 text-amber-400 rounded-2xl p-2 border border-slate-700 shadow-md">
+                <Logo className="w-10 h-10" variant="light" />
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
+                <Lock className="w-3 h-3 text-amber-500" />
+                <span>NIC Single Sign-On (SSO) • Official Portal</span>
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                Government Officer Authentication
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                National Disaster Management Authority (NDMA) & District Incident Command
+              </p>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">Access Password</label>
-              <div className="relative">
+            {/* Error banner */}
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Official Email ID / Service Username (@nic.in / @gov.in)
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="officer@nic.in"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Security Passphrase / Token
+                </label>
                 <input
                   type="password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/40"
+                  placeholder="••••••••••••"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
-                <KeyRound className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
               </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-700/25 flex items-center justify-center gap-2 transition disabled:opacity-50 active:scale-95"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Verifying Official Credentials...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>Authorize Officer Session & Enter Command</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Pre-Provisioned Enterprise Directory Accounts */}
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2.5 text-center">
+                Pre-Provisioned Directory Accounts (Demo Instant Login):
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => quickFill('dg.ndma@nic.in')}
+                  className="p-2.5 text-left bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition group"
+                >
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    NDMA National Command
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">dg.ndma@nic.in</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickFill('dm.chamoli@uk.gov.in')}
+                  className="p-2.5 text-left bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-emerald-400 dark:hover:border-emerald-500 transition group"
+                >
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                    DM Chamoli (UK)
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">dm.chamoli@uk.gov.in</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickFill('dm.wayanad@kerala.gov.in')}
+                  className="p-2.5 text-left bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-purple-400 dark:hover:border-purple-500 transition group"
+                >
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                    DM Wayanad (KL)
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">dm.wayanad@kerala.gov.in</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => quickFill('dm.darbhanga@bihar.gov.in')}
+                  className="p-2.5 text-left bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-amber-400 dark:hover:border-amber-500 transition group"
+                >
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                    DM Darbhanga (BR)
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate">dm.darbhanga@bihar.gov.in</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 text-center">
+                Authorized Officer Key: <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-slate-700 dark:text-slate-300 font-bold">Password@123</code>
+              </p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white text-sm font-bold rounded-lg shadow-md transition-all active:scale-[0.99]"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Verifying Identity with Backend...
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  Authenticate & Authorize
-                </>
-              )}
-            </button>
-          </form>
-
-          <p className="text-center text-xs text-slate-400 mt-6">
-            <Link to="/" className="hover:text-slate-700 font-medium transition">
-              ← Return to Public Dashboard
-            </Link>
-          </p>
+          </div>
         </div>
+
+        {/* Link back to Citizen Portal Login */}
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center shadow-sm flex items-center justify-between">
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+            Are you a citizen or resident?
+          </span>
+          <Link
+            to="/citizen-login"
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            <span>Open Citizen Safety Login</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
       </div>
     </div>
   );

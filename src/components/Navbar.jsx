@@ -1,28 +1,39 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  Bell, Menu, X, ChevronDown,
-  Home, Info, Waves, Map, Users, Gauge, Move, BarChart3,
-  BookOpen, LogIn, Shield, Building, Check, LogOut, Lock,
-  Radio, AlertTriangle, CheckCircle2, Clock, Sun, Moon, ShieldAlert
+  Bell, Menu, X, ChevronDown, Home, Info, Waves, Map, Users, Gauge,
+  Move, BarChart3, BookOpen, LogIn, Shield, Building, Check, LogOut,
+  Lock, Radio, AlertTriangle, CheckCircle2, Clock, Sun, Moon,
+  ShieldAlert, PhoneCall, ExternalLink, ArrowRight, User, ShieldCheck
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { NOTIFICATIONS } from '@/data/demoData';
 import { initTheme } from '../theme';
 
-const NAV_LINKS = [
+// ==========================================
+// GOVERNMENT PORTAL: EXACT 11 NAV LINKS
+// ==========================================
+const GOV_NAV_LINKS = [
+  { to: '/gov', altTo: '/', label: 'Home', icon: Home },
+  { to: '/gov/about', altTo: '/about', label: 'About', icon: Info },
+  { to: '/gov/disasters', altTo: '/disasters', label: 'Disaster Information', icon: Waves },
+  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', label: 'Live Alerts', icon: Bell },
+  { to: '/gov/risk-map', altTo: '/risk-map', label: 'Risk Map', icon: Map },
+  { to: '/gov/habitations', altTo: '/habitations', label: 'Habitations', icon: Users },
+  { to: '/gov/capacity', altTo: '/capacity', label: 'Capacity', icon: Gauge },
+  { to: '/gov/relocation', altTo: '/relocation', label: 'Relocation', icon: Move },
+  { to: '/gov/rescue-teams', altTo: '/rescue-teams', label: 'Rescue Teams', icon: ShieldAlert },
+  { to: '/gov/analytics', altTo: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/gov/resources', altTo: '/resources', label: 'Resources', icon: BookOpen },
+];
+
+// ==========================================
+// CITIZEN PORTAL: EXACT USER NAV LINKS
+// ==========================================
+const CITIZEN_NAV_LINKS = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/about', label: 'About', icon: Info },
-  { to: '/disasters', label: 'Disaster Information', icon: Waves },
   { to: '/community-reports', label: 'Community Reports', icon: Radio },
-  { to: '/emergency-alerts', label: 'Live Alerts', icon: Bell },
   { to: '/risk-map', label: 'Risk Map', icon: Map },
-  { to: '/habitations', label: 'Habitations', icon: Users },
-  { to: '/capacity', label: 'Capacity', icon: Gauge },
-  { to: '/relocation', label: 'Relocation', icon: Move },
-  { to: '/rescue-teams', label: 'Rescue Teams', icon: ShieldAlert },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/resources', label: 'Resources', icon: BookOpen },
 ];
 
 const ROLES = [
@@ -34,9 +45,11 @@ const ROLES = [
 
 function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
   return (
-    <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 p-2 animate-in fade-in zoom-in duration-100">
-      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700 mb-1">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Select Administrative Scope</p>
+    <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 p-2 animate-in fade-in zoom-in duration-100">
+      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Select Administrative Jurisdiction
+        </p>
       </div>
       <div className="space-y-1">
         {ROLES.map((role) => {
@@ -50,13 +63,13 @@ function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
                 onClose();
               }}
               className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                isSelected 
-                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold' 
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200'
+                isSelected
+                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-md ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                <div className={`p-1.5 rounded-md ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div>
@@ -81,7 +94,44 @@ export default function Navbar() {
   const [roleOpen, setRoleOpen] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
 
-  // Direct state sync for dark/light mode toggle
+  // Determine Portal Mode (Government vs Citizen)
+  const isGovPath =
+    location.pathname.startsWith('/gov') ||
+    [
+      '/about', '/disasters', '/emergency-alerts', '/habitations',
+      '/capacity', '/relocation', '/relocation-sites', '/rescue-teams',
+      '/analytics', '/resources', '/admin', '/settings'
+    ].some((p) => location.pathname === p || location.pathname.startsWith(p + '/'));
+
+  const [portalMode, setPortalMode] = useState(() => {
+    if (isGovPath) return 'gov';
+    return localStorage.getItem('diastra_portal_mode') || 'citizen';
+  });
+
+  useEffect(() => {
+    if (isGovPath) {
+      setPortalMode('gov');
+      localStorage.setItem('diastra_portal_mode', 'gov');
+    } else if (location.pathname === '/' || location.pathname === '/community-reports' || location.pathname === '/citizen-login') {
+      // If user navigated directly to citizen root
+      setPortalMode('citizen');
+      localStorage.setItem('diastra_portal_mode', 'citizen');
+    }
+  }, [location.pathname, isGovPath]);
+
+  const switchToGov = () => {
+    setPortalMode('gov');
+    localStorage.setItem('diastra_portal_mode', 'gov');
+    navigate('/gov');
+  };
+
+  const switchToCitizen = () => {
+    setPortalMode('citizen');
+    localStorage.setItem('diastra_portal_mode', 'citizen');
+    navigate('/');
+  };
+
+  // Dark / Light Theme
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('disastra_theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   });
@@ -114,8 +164,14 @@ export default function Navbar() {
     window.dispatchEvent(new CustomEvent('themeChanged', { detail: nextTheme }));
   };
 
+  // Auth & Roles
   const [authUser, setAuthUser] = useState(() => {
     const saved = localStorage.getItem('dss_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [citizenUser, setCitizenUser] = useState(() => {
+    const saved = localStorage.getItem('dss_citizen_user');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -126,11 +182,7 @@ export default function Navbar() {
   const [alertLogs, setAlertLogs] = useState(() => {
     const savedLogs = localStorage.getItem('dss_alert_logs');
     if (savedLogs) {
-      try {
-        return JSON.parse(savedLogs);
-      } catch {
-        return NOTIFICATIONS || [];
-      }
+      try { return JSON.parse(savedLogs); } catch { return NOTIFICATIONS || []; }
     }
     return NOTIFICATIONS || [];
   });
@@ -140,44 +192,15 @@ export default function Navbar() {
   const userRef = useRef(null);
 
   useEffect(() => {
-    const handleStorageUpdate = () => {
-      const savedLogs = localStorage.getItem('dss_alert_logs');
-      if (savedLogs) {
-        try {
-          setAlertLogs(JSON.parse(savedLogs));
-        } catch {}
-      }
-    };
-    window.addEventListener('storage', handleStorageUpdate);
-    return () => window.removeEventListener('storage', handleStorageUpdate);
-  }, []);
-
-  useEffect(() => {
-    if (authUser && authUser.role && authUser.role !== 'national') {
-      if (currentRole !== authUser.role) {
-        setCurrentRole(authUser.role);
-        localStorage.setItem('dss_user_role', authUser.role);
-        window.dispatchEvent(new Event('roleChanged'));
-      }
-    }
-  }, [authUser]);
-
-  useEffect(() => {
     const handleAuth = () => {
       const saved = localStorage.getItem('dss_auth_user');
-      const userObj = saved ? JSON.parse(saved) : null;
-      setAuthUser(userObj);
-
-      if (userObj && userObj.role !== 'national') {
-        setCurrentRole(userObj.role);
-        localStorage.setItem('dss_user_role', userObj.role);
-      } else {
-        setCurrentRole(localStorage.getItem('dss_user_role') || 'national');
-      }
+      setAuthUser(saved ? JSON.parse(saved) : null);
+      const savedCitizen = localStorage.getItem('dss_citizen_user');
+      setCitizenUser(savedCitizen ? JSON.parse(savedCitizen) : null);
     };
 
     window.addEventListener('authChanged', handleAuth);
-    window.addEventListener('roleChanged', handleAuth);
+    window.addEventListener('citizenAuthChanged', handleAuth);
     window.addEventListener('storage', handleAuth);
 
     function handleClickOutside(e) {
@@ -189,22 +212,20 @@ export default function Navbar() {
 
     return () => {
       window.removeEventListener('authChanged', handleAuth);
-      window.removeEventListener('roleChanged', handleAuth);
+      window.removeEventListener('citizenAuthChanged', handleAuth);
       window.removeEventListener('storage', handleAuth);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
   const handleRoleChange = (roleId) => {
-    if (authUser && authUser.role !== 'national') {
-      return;
-    }
+    if (authUser && authUser.role !== 'national') return;
     setCurrentRole(roleId);
     localStorage.setItem('dss_user_role', roleId);
     window.dispatchEvent(new Event('roleChanged'));
   };
 
-  const handleLogout = () => {
+  const handleGovLogout = () => {
     localStorage.removeItem('dss_auth_user');
     localStorage.setItem('dss_user_role', 'national');
     setAuthUser(null);
@@ -212,12 +233,17 @@ export default function Navbar() {
     window.dispatchEvent(new Event('authChanged'));
     window.dispatchEvent(new Event('roleChanged'));
     setUserDropdown(false);
-    navigate('/');
+    navigate('/gov');
   };
 
   const activeRoleObj = ROLES.find((r) => r.id === currentRole) || ROLES[0];
   const isDMLocked = authUser && authUser.role !== 'national';
-  const isActive = (path) => location.pathname === path;
+
+  const isLinkActive = (to, altTo) => {
+    if (location.pathname === to) return true;
+    if (altTo && location.pathname === altTo) return true;
+    return false;
+  };
 
   const filteredAlerts = useMemo(() => {
     if (currentRole === 'national') return alertLogs;
@@ -229,324 +255,432 @@ export default function Navbar() {
 
   const unreadCount = filteredAlerts.length;
 
-  return (
-    <nav className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo with Disaster branding */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <Logo className="w-7 h-7" variant={theme === 'dark' ? 'light' : 'dark'} />
-            <div className="hidden sm:block">
-              <span className="text-base font-black tracking-tight text-slate-900 dark:text-white leading-tight block">
-                Disaster
-              </span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium leading-tight block">
-                NDMA Decision Support
-              </span>
+  // ==========================================
+  // RENDER: GOVERNMENT COMMAND PORTAL NAVBAR
+  // ==========================================
+  if (portalMode === 'gov') {
+    return (
+      <header className="sticky top-0 z-50 shadow-md">
+        {/* Government of India Official Tricolor Strip */}
+        <div className="h-1 bg-gradient-to-r from-amber-500 via-white to-emerald-600" />
+
+        {/* Top Official National Header */}
+        <div className="bg-slate-900 text-slate-100 px-4 py-1.5 border-b border-slate-800 text-xs">
+          <div className="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 font-serif font-black text-[10px]">
+                🏛️
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold tracking-tight text-white">भारत सरकार</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-300 font-medium">Government of India</span>
+                <span className="hidden md:inline text-slate-500">•</span>
+                <span className="hidden md:inline text-amber-300/90 font-semibold">
+                  राष्ट्रीय आपदा प्रबंधन प्राधिकरण (NDMA)
+                </span>
+              </div>
             </div>
-          </Link>
 
-          {/* Desktop nav links */}
-          <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  isActive(link.to)
-                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                RESTRICTED OFFICIAL ACCESS • NIC VERIFIED
+              </span>
 
-          {/* Right actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Dark / Light Theme Toggle Button */}
-            <button
-              onClick={handleToggleTheme}
-              className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95"
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-              aria-label="Toggle Theme"
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform duration-200" />
-              ) : (
-                <Moon className="w-4 h-4 text-slate-600 hover:-rotate-12 transition-transform duration-200" />
-              )}
-            </button>
-
-            {/* CAP Alert Notification Bell */}
-            <div className="relative" ref={notifRef}>
+              {/* Portal Switcher: Go back to Citizen Portal */}
               <button
-                onClick={() => {
-                  setNotifOpen(!notifOpen);
-                  setRoleOpen(false);
-                  setUserDropdown(false);
-                }}
-                className="relative p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-95"
-                title="Early Warning Broadcast Log"
+                onClick={switchToCitizen}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-600/90 hover:bg-blue-600 text-white text-[11px] font-bold transition shadow-sm"
               >
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white shadow-sm">
-                    {unreadCount}
-                  </span>
-                )}
+                <span>🌐 Public Citizen Portal</span>
+                <ArrowRight className="w-3 h-3" />
               </button>
+            </div>
+          </div>
+        </div>
 
-              {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden animate-in fade-in zoom-in duration-100">
-                  <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <Radio className="w-4 h-4 text-red-400 animate-pulse" />
-                      <span className="text-xs font-bold uppercase tracking-wider">CAP Alert Logs</span>
-                    </div>
-                    <span className="text-[10px] font-bold bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
-                      {currentRole === 'national' ? 'All-India' : activeRoleObj.name.split(' ')[1]}
+        {/* Main Government Command Navigation Bar */}
+        <nav className="bg-slate-950/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-800 transition-colors">
+          <div className="max-w-[1700px] mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between h-14">
+              
+              {/* Government Command Brand Logo */}
+              <Link to="/gov" className="flex items-center gap-2.5 flex-shrink-0">
+                <div className="p-1 rounded-lg bg-blue-600/20 border border-blue-500/30">
+                  <Logo className="w-6 h-6" variant="light" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-black tracking-tight text-white leading-tight">
+                      DIASTRA DSS
+                    </span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-mono">
+                      COMMAND
                     </span>
                   </div>
+                  <span className="text-[10px] text-slate-400 font-medium block leading-tight">
+                    Disaster Intelligence & Decision Support
+                  </span>
+                </div>
+              </Link>
 
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredAlerts.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 dark:text-slate-500 text-xs">
-                        No broadcast alerts recorded for this jurisdiction.
-                      </div>
-                    ) : (
-                      filteredAlerts.map((n, idx) => (
-                        <div key={idx} className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                              {n.title}
-                            </p>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 flex-shrink-0">
-                              <Clock className="w-3 h-3" />
-                              {n.time || 'Recent'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{n.message}</p>
-                          <div className="mt-2 flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded w-fit border border-emerald-200 dark:border-emerald-800">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Dispatched via C-DOT Cell Broadcast
-                          </div>
+              {/* Desktop 11 Government Links */}
+              <div className="hidden xl:flex items-center gap-0.5 flex-1 justify-center px-4 overflow-x-auto">
+                {GOV_NAV_LINKS.map((link) => {
+                  const active = isLinkActive(link.to, link.altTo);
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className={`px-2 py-1.5 text-xs font-semibold rounded-md transition whitespace-nowrap ${
+                        active
+                          ? 'bg-blue-600 text-white shadow-sm font-bold'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Right Controls */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Theme Toggle */}
+                <button
+                  onClick={handleToggleTheme}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Moon className="w-4 h-4 text-slate-300" />
+                  )}
+                </button>
+
+                {/* Notifications Bell */}
+                <div className="relative" ref={notifRef}>
+                  <button
+                    onClick={() => {
+                      setNotifOpen(!notifOpen);
+                      setRoleOpen(false);
+                      setUserDropdown(false);
+                    }}
+                    className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                    title="CAP Alert Broadcast Feed"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-600 text-[10px] font-black text-white">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                      <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-4 h-4 text-red-400 animate-pulse" />
+                          <span className="text-xs font-bold uppercase tracking-wider">CAP Alert Logs</span>
                         </div>
-                      ))
+                        <span className="text-[10px] font-bold bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
+                          {currentRole === 'national' ? 'All-India' : activeRoleObj.name.split(' ')[1]}
+                        </span>
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                        {filteredAlerts.length === 0 ? (
+                          <div className="p-6 text-center text-slate-400 text-xs">
+                            No broadcast alerts recorded for this jurisdiction.
+                          </div>
+                        ) : (
+                          filteredAlerts.map((n, idx) => (
+                            <div key={idx} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition text-xs">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                                  {n.title}
+                                </p>
+                                <span className="text-[10px] text-slate-400">{n.time || 'Recent'}</span>
+                              </div>
+                              <p className="text-slate-600 dark:text-slate-300 mt-1">{n.message}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="p-2.5 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-center">
+                        <Link
+                          to="/gov/emergency-alerts"
+                          onClick={() => setNotifOpen(false)}
+                          className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Open Emergency Broadcast Center →
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scope Switcher */}
+                <div className="relative" ref={roleRef}>
+                  {isDMLocked ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-emerald-950/40 border-emerald-700 text-emerald-300 text-xs font-bold">
+                      <Lock className="w-3 h-3 text-emerald-400" />
+                      <span className="hidden md:inline">{activeRoleObj.name}</span>
+                      <span className="md:hidden">DM</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setRoleOpen(!roleOpen);
+                        setNotifOpen(false);
+                        setUserDropdown(false);
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition"
+                    >
+                      <activeRoleObj.icon className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="hidden md:inline">{activeRoleObj.name}</span>
+                      <span className="md:hidden">{currentRole === 'national' ? 'NDMA' : 'DM'}</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+                  )}
+
+                  {roleOpen && !isDMLocked && (
+                    <RoleSwitcherDropdown
+                      currentRole={currentRole}
+                      onSelectRole={handleRoleChange}
+                      onClose={() => setRoleOpen(false)}
+                    />
+                  )}
+                </div>
+
+                {/* Officer Profile / Login */}
+                {authUser ? (
+                  <div className="relative" ref={userRef}>
+                    <button
+                      onClick={() => setUserDropdown(!userDropdown)}
+                      className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        {authUser.name.charAt(0)}
+                      </div>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {userDropdown && (
+                      <div className="absolute right-0 mt-2 w-56 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-800 p-2 z-50">
+                        <div className="px-3 py-2 border-b border-slate-800">
+                          <p className="text-xs font-bold">{authUser.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{authUser.email}</p>
+                          <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-900/60 text-blue-300 font-semibold text-[9px] rounded">
+                            {authUser.designation}
+                          </span>
+                        </div>
+                        <button
+                          onClick={handleGovLogout}
+                          className="w-full mt-1.5 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Sign Out Officer Session
+                        </button>
+                      </div>
                     )}
                   </div>
-
-                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 text-center">
-                    <Link
-                      to="/disasters"
-                      onClick={() => setNotifOpen(false)}
-                      className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      View Multi-Hazard Intelligence →
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Role Switcher or Locked Scope Badge */}
-            <div className="relative" ref={roleRef}>
-              {isDMLocked ? (
-                <div
-                  title="Jurisdiction locked to your official posting"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 text-xs font-bold cursor-default select-none shadow-sm"
-                >
-                  <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span className="hidden md:inline">{activeRoleObj.name}</span>
-                  <span className="md:hidden">DM Scope</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setRoleOpen(!roleOpen);
-                    setNotifOpen(false);
-                    setUserDropdown(false);
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition ${
-                    currentRole === 'national'
-                      ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                      : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-bold hover:bg-emerald-100'
-                  }`}
-                >
-                  <activeRoleObj.icon className={`w-3.5 h-3.5 ${currentRole === 'national' ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-700 dark:text-emerald-400'}`} />
-                  <span className="hidden md:inline">{activeRoleObj.name}</span>
-                  <span className="md:hidden">{currentRole === 'national' ? 'NDMA' : 'DM'}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
-                </button>
-              )}
-
-              {roleOpen && !isDMLocked && (
-                <RoleSwitcherDropdown
-                  currentRole={currentRole}
-                  onSelectRole={handleRoleChange}
-                  onClose={() => setRoleOpen(false)}
-                />
-              )}
-            </div>
-
-            {/* Authenticated User Pill OR Login Button */}
-            {authUser ? (
-              <div className="relative" ref={userRef}>
-                <button
-                  onClick={() => setUserDropdown(!userDropdown)}
-                  className="flex items-center gap-2 pl-2 pr-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg transition text-left"
-                >
-                  <div className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px] font-bold">
-                    {authUser.name.charAt(0)}
-                  </div>
-                  <div className="hidden xl:block">
-                    <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 leading-none">{authUser.name.split(' ')[0]}</p>
-                    <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-none mt-0.5">{authUser.badge}</p>
-                  </div>
-                  <ChevronDown className="w-3 h-3 text-slate-500" />
-                </button>
-
-                {userDropdown && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 z-50">
-                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{authUser.name}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{authUser.email}</p>
-                      <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold text-[9px] rounded">
-                        {authUser.designation}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full mt-1.5 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Sign Out
-                    </button>
-                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-sm"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Officer Login</span>
+                  </Link>
                 )}
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg transition shadow-sm"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Login</span>
-              </Link>
-            )}
 
-            {/* Mobile Menu Toggle */}
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={() => setMobileOpen(!mobileOpen)}
+                  className="xl:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800"
+                >
+                  {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Dropdown for Govt Links */}
+            {mobileOpen && (
+              <div className="xl:hidden py-3 border-t border-slate-800 grid grid-cols-2 gap-1.5">
+                {GOV_NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMobileOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </nav>
+      </header>
+    );
+  }
+
+  // ==========================================
+  // RENDER: CITIZEN PUBLIC SAFETY PORTAL NAVBAR
+  // ==========================================
+  return (
+    <header className="sticky top-0 z-50 shadow-sm">
+      {/* Citizen Top Strip */}
+      <div className="bg-slate-900 text-white px-4 py-1.5 border-b border-slate-800 text-xs">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="font-semibold text-slate-300 text-[11px]">
+              आपदा नागरिक सुरक्षा एवं सहायता पोर्टल • 24x7 Citizen Safety Network
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a href="tel:112" className="flex items-center gap-1 text-[11px] font-bold text-amber-400 hover:underline">
+              <PhoneCall className="w-3 h-3" /> Dial 112 (National SOS)
+            </a>
+            <span className="text-slate-600">|</span>
+            {/* Direct Switch to Government Command Portal */}
             <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="lg:hidden p-2 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              aria-label="Menu"
+              onClick={switchToGov}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 text-[11px] font-bold transition"
             >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Shield className="w-3 h-3 text-amber-400" />
+              <span>Official Government Portal</span>
+              <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile nav */}
-      {mobileOpen && (
-        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 max-h-[calc(100vh-3.5rem)] overflow-y-auto">
-          <div className="px-4 py-3 space-y-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-md ${
-                  isActive(link.to) 
-                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' 
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <link.icon className="w-4 h-4" />
-                {link.label}
-              </Link>
-            ))}
-            {authUser ? (
+      {/* Main Citizen Navbar */}
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20">
+                <Logo className="w-6 h-6" variant="light" />
+              </div>
+              <div>
+                <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none block">
+                  DIASTRA
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block leading-tight mt-0.5">
+                  Citizen Safety & Early Warning
+                </span>
+              </div>
+            </Link>
+
+            {/* Exact 3 Citizen Links */}
+            <div className="hidden md:flex items-center gap-1">
+              {CITIZEN_NAV_LINKS.map((link) => {
+                const active = location.pathname === link.to;
+                const Icon = link.icon;
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                      active
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-black'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Right Actions: Theme Toggle & Citizen Login */}
+            <div className="flex items-center gap-3">
+              {/* Theme toggle */}
               <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md"
+                onClick={handleToggleTheme}
+                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                title="Toggle Theme"
               >
-                <LogOut className="w-4 h-4" />
-                Sign Out ({authUser.name})
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-600" />
+                )}
               </button>
-            ) : (
-              <Link
-                to="/login"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-md"
+
+              {/* Citizen Login or Profile */}
+              {citizenUser ? (
+                <Link
+                  to="/citizen-login"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden sm:inline">{citizenUser.name.split(' ')[0]}</span>
+                  <span className="sm:hidden">Profile</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/citizen-login"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Citizen Login</span>
+                </Link>
+              )}
+
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                <LogIn className="w-4 h-4" />
-                Login
-              </Link>
-            )}
+                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Citizen Dropdown */}
+          {mobileOpen && (
+            <div className="md:hidden py-3 border-t border-slate-100 dark:border-slate-800 space-y-1">
+              {CITIZEN_NAV_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <link.icon className="w-4 h-4" />
+                  <span>{link.label}</span>
+                </Link>
+              ))}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    switchToGov();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 text-xs font-bold"
+                >
+                  <span>Enter Government Command Portal</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </nav>
-  );
-}
-
-export function DemoBanner({ text = '' }) {
-  const [role, setRole] = useState(() => localStorage.getItem('dss_user_role') || 'national');
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      setRole(localStorage.getItem('dss_user_role') || 'national');
-    };
-    window.addEventListener('roleChanged', handleUpdate);
-    return () => window.removeEventListener('roleChanged', handleUpdate);
-  }, []);
-
-  const roleText =
-    role === 'chamoli'
-      ? 'OPERATIONAL CONTEXT: DISTRICT MAGISTRATE CHAMOLI (RESTRICTED JURISDICTION)'
-      : role === 'darbhanga'
-      ? 'OPERATIONAL CONTEXT: DISTRICT MAGISTRATE DARBHANGA (RESTRICTED JURISDICTION)'
-      : role === 'wayanad'
-      ? 'OPERATIONAL CONTEXT: DISTRICT MAGISTRATE WAYANAD (RESTRICTED JURISDICTION)'
-      : 'DISASTER · NATIONAL NDMA COMMAND (ALL-INDIA JURISDICTION)';
-
-  return (
-    <div className={`border-b px-4 py-1.5 transition-colors ${role !== 'national' ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800' : 'bg-slate-900 border-slate-800'}`}>
-      <p className={`text-xs text-center font-bold tracking-wide ${role !== 'national' ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-300'}`}>
-        {text || roleText}
-      </p>
-    </div>
-  );
-}
-
-export function Disclaimer({ text = '', className = '' }) {
-  return (
-    <div className={`bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-3 ${className || ''}`}>
-      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        {text || 'Disaster decision-support recommendation — field actions require authorized validation from NDRF / SDMA authorities.'}
-      </p>
-    </div>
-  );
-}
-
-export function PageHeader({ title, subtitle, icon: Icon, children }) {
-  return (
-    <div className="mb-6">
-      <div className="flex items-center gap-3">
-        {Icon && (
-          <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center">
-            <Icon className="w-5 h-5" />
-          </div>
-        )}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">{title}</h1>
-          {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
-        </div>
-      </div>
-      {children && <div className="mt-4">{children}</div>}
-    </div>
+      </nav>
+    </header>
   );
 }
