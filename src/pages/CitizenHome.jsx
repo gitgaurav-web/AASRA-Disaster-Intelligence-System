@@ -3,15 +3,17 @@ import { Link } from 'react-router-dom';
 import {
   PhoneCall, Shield, AlertTriangle, MapPin, Radio, CheckCircle2,
   ChevronRight, HeartPulse, LifeBuoy, FileText, Bell, Navigation,
-  HelpCircle, Compass, Award, ExternalLink, Activity
+  HelpCircle, Compass, Award, ExternalLink, Activity, PhoneForwarded,
+  Copy, Check, X
 } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
 const HELPLINES = [
-  { number: '112', label: 'National Emergency', desc: 'Police, Fire, Medical all-in-one', color: 'bg-red-650 text-white' },
-  { number: '1070', label: 'NDMA Central Control', desc: 'National Disaster Response Desk', color: 'bg-amber-600 text-white' },
-  { number: '1077', label: 'District Disaster Control', desc: 'Local DM emergency office', color: 'bg-blue-600 text-white' },
-  { number: '108', label: 'Ambulance & Medical', desc: 'Immediate medical dispatch', color: 'bg-emerald-600 text-white' },
-  { number: '1091', label: 'Women & Child Safety', desc: '24x7 safety assistance', color: 'bg-purple-600 text-white' },
+  { number: '112', label: 'National Emergency', desc: 'Police, Fire, Medical all-in-one response', color: 'bg-red-650 text-white' },
+  { number: '1070', label: 'NDMA Central Control', desc: 'National Disaster Management Operations Desk', color: 'bg-amber-600 text-white' },
+  { number: '1077', label: 'District Disaster Control', desc: 'Local DM Emergency Operations Center', color: 'bg-blue-600 text-white' },
+  { number: '108', label: 'Ambulance & Medical', desc: 'Immediate medical ambulance dispatch', color: 'bg-emerald-600 text-white' },
+  { number: '1091', label: 'Women & Child Safety', desc: '24x7 safety assistance helpline', color: 'bg-purple-600 text-white' },
 ];
 
 const SURVIVAL_KIT_ITEMS = [
@@ -80,8 +82,6 @@ const DOS_DONTS = {
   }
 };
 
-import { useLanguage } from '@/context/LanguageContext';
-
 export default function CitizenHome() {
   const { language, t } = useLanguage();
   const [checkedKit, setCheckedKit] = useState(() => {
@@ -94,6 +94,10 @@ export default function CitizenHome() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Call Modal State
+  const [callModal, setCallModal] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const handleAuth = () => {
       const saved = localStorage.getItem('dss_citizen_user');
@@ -102,6 +106,19 @@ export default function CitizenHome() {
     window.addEventListener('citizenAuthChanged', handleAuth);
     return () => window.removeEventListener('citizenAuthChanged', handleAuth);
   }, []);
+
+  const triggerCall = (helpline) => {
+    setCallModal(helpline);
+    setCopied(false);
+    // Direct protocol trigger
+    window.location.href = `tel:${helpline.number}`;
+  };
+
+  const copyHelplineNumber = (num) => {
+    navigator.clipboard.writeText(num);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const toggleKitItem = (id) => {
     setCheckedKit(prev => {
@@ -123,19 +140,18 @@ export default function CitizenHome() {
             <span className="flex h-2.5 w-2.5 rounded-full bg-white animate-ping" />
             <span className="uppercase tracking-wider font-bold">24x7 Citizen Emergency Hotlines:</span>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs font-bold">
-            <a href="tel:112" className="hover:underline flex items-center gap-1 bg-red-800/80 px-2 py-0.5 rounded">
-              <PhoneCall className="w-3.5 h-3.5" /> 112 (Emergency)
-            </a>
-            <a href="tel:1070" className="hover:underline flex items-center gap-1 bg-red-800/80 px-2 py-0.5 rounded">
-              <PhoneCall className="w-3.5 h-3.5" /> 1070 (NDMA)
-            </a>
-            <a href="tel:1077" className="hover:underline flex items-center gap-1 bg-red-800/80 px-2 py-0.5 rounded">
-              <PhoneCall className="w-3.5 h-3.5" /> 1077 (District Control)
-            </a>
-            <a href="tel:108" className="hover:underline flex items-center gap-1 bg-red-800/80 px-2 py-0.5 rounded">
-              <PhoneCall className="w-3.5 h-3.5" /> 108 (Ambulance)
-            </a>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-bold">
+            {HELPLINES.slice(0, 4).map((h) => (
+              <button
+                key={h.number}
+                onClick={() => triggerCall(h)}
+                className="hover:bg-red-650 flex items-center gap-1.5 bg-red-800/90 border border-red-500/30 px-2.5 py-1 rounded-lg transition active:scale-95 text-white"
+                title={`Call ${h.number} - ${h.label}`}
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>{h.number} ({h.label.split(' ')[0]})</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -189,14 +205,14 @@ export default function CitizenHome() {
                     to="/citizen-login"
                     className="px-4 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 flex items-center gap-2 transition"
                   >
-                    <span>Citizen Login</span>
+                    <span>{t('nav_citizen_login')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 )}
               </div>
             </div>
 
-            {/* Quick SOS Card */}
+            {/* Quick SOS Call Card with Tap to Call */}
             <div className="w-full lg:w-96 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700 p-6 shadow-2xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
@@ -204,38 +220,45 @@ export default function CitizenHome() {
                     <HeartPulse className="w-5 h-5 animate-pulse" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">Emergency Fast Dial</h3>
-                    <p className="text-[11px] text-slate-400">Toll-free 24x7 response</p>
+                    <h3 className="font-bold text-sm text-white">{t('emergency_dial_title')}</h3>
+                    <p className="text-[11px] text-slate-400">{t('emergency_dial_sub')}</p>
                   </div>
                 </div>
                 <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded">
-                  Active
+                  Live Desk
                 </span>
               </div>
 
               <div className="space-y-2">
-                {HELPLINES.slice(0, 4).map((h) => (
-                  <a
+                {HELPLINES.map((h) => (
+                  <button
                     key={h.number}
-                    href={`tel:${h.number}`}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 transition group"
+                    onClick={() => triggerCall(h)}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 transition group text-left active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`px-2 py-1 rounded-md text-xs font-black ${h.color}`}>
+                      <div className={`px-2 py-1 rounded-md text-xs font-black ${h.color} shadow-sm`}>
                         {h.number}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-200 group-hover:text-white">{h.label}</p>
+                        <p className="text-xs font-bold text-slate-200 group-hover:text-white flex items-center gap-1.5">
+                          <span>{h.label}</span>
+                          <span className="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.2 rounded font-mono font-bold">
+                            TAP TO CALL
+                          </span>
+                        </p>
                         <p className="text-[10px] text-slate-400">{h.desc}</p>
                       </div>
                     </div>
-                    <PhoneCall className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
-                  </a>
+                    <div className="p-1.5 rounded-lg bg-slate-700 group-hover:bg-emerald-600 text-slate-300 group-hover:text-white transition">
+                      <PhoneCall className="w-3.5 h-3.5" />
+                    </div>
+                  </button>
                 ))}
               </div>
 
               <p className="text-[10px] text-slate-400 text-center">
-                *In case of network failure, switch phone to 2G or dial 112 directly.
+                *Toll-free across India. Works on all mobile networks without balance.
               </p>
             </div>
           </div>
@@ -286,17 +309,17 @@ export default function CitizenHome() {
                   <Compass className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  Safe Shelters & Risk Map
+                  {t('card2_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Locate government-vetted cyclone shelters, relief camps, schools, and hospitals with available beds, safe drinking water, and backup power generators.
+                  {t('card2_desc')}
                 </p>
               </div>
               <Link
                 to="/risk-map"
                 className="mt-5 w-full py-2.5 px-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-between transition"
               >
-                <span>View Map & Evacuation Routes</span>
+                <span>{t('card2_btn')}</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -308,17 +331,17 @@ export default function CitizenHome() {
                   <Shield className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  Citizen Profile & Alerts
+                  {t('card3_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Log in with your mobile number to track the status of your submitted reports, save family emergency contacts, and receive localized SMS/WhatsApp warnings.
+                  {t('card3_desc')}
                 </p>
               </div>
               <Link
                 to="/citizen-login"
                 className="mt-5 w-full py-2.5 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-between transition"
               >
-                <span>{citizenUser ? 'View My Citizen Profile' : 'Login / Register as Citizen'}</span>
+                <span>{citizenUser ? t('nav_profile') : t('nav_citizen_login')}</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -331,12 +354,12 @@ export default function CitizenHome() {
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-amber-500" />
               <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                Live District Advisories & Early Warnings
+                {t('advisories_title')}
               </h2>
             </div>
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Synced from IMD & CWC Feeds
+              {t('advisories_sub')}
             </span>
           </div>
 
@@ -374,17 +397,17 @@ export default function CitizenHome() {
                 <LifeBuoy className="w-3 h-3" /> NDMA Recommended
               </div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                Interactive 72-Hour Family Survival Kit Checklist
+                {t('kit_title')}
               </h2>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                Tick items as you pack them before evacuating or during high-alert advisories.
+                {t('kit_sub')}
               </p>
             </div>
 
             {/* Progress Bar */}
             <div className="w-full md:w-64 space-y-1.5">
               <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Kit Preparedness</span>
+                <span>{t('kit_progress')}</span>
                 <span className={kitPercent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}>
                   {kitPercent}%
                 </span>
@@ -435,10 +458,10 @@ export default function CitizenHome() {
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
           <div className="mb-4">
             <h2 className="text-xl font-black text-slate-900 dark:text-white">
-              Life-Saving Guidelines: Do's & Don'ts
+              {t('dos_donts_title')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Standard operating procedures for citizens during active hazards
+              {t('dos_donts_sub')}
             </p>
           </div>
 
@@ -491,38 +514,68 @@ export default function CitizenHome() {
           </div>
         </section>
 
-        {/* Official Authority Banner Link */}
-        <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-2xl border border-indigo-900/50 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
-              <span>National & District Authority Access</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black tracking-tight">
-              Are you an authorized Disaster Response Officer?
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              District Magistrates, NDRF Commanders, and SDMA directors can access the unified Government Command Dashboard with multi-hazard GIS layers, evacuation algorithms, and automated shelter allocation gap tools.
-            </p>
-          </div>
-          <Link
-            to="/gov"
-            className="px-6 py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-xl shadow-amber-400/20 flex items-center gap-2 transition flex-shrink-0 active:scale-95"
-          >
-            <Shield className="w-4 h-4" />
-            <span>Enter Government Portal</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </section>
-
       </div>
-    </div>
-  );
-}
 
-function ArrowRight(props) {
-  return (
-    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-    </svg>
+      {/* Interactive Emergency Call Confirmation Modal */}
+      {callModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                Emergency Calling Desk
+              </span>
+              <button
+                onClick={() => setCallModal(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center border border-red-200 dark:border-red-800 animate-pulse">
+                <PhoneForwarded className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                Connecting to {callModal.number}
+              </h3>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {callModal.label}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {callModal.desc}
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between font-mono font-bold text-base text-slate-900 dark:text-white">
+                <span>Direct Dial:</span>
+                <span className="text-red-600 dark:text-red-400">{callModal.number}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                📱 If on mobile, your phone dialer app has launched automatically. If calling from desktop, you can copy the number:
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => copyHelplineNumber(callModal.number)}
+                className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                <span>{copied ? 'Copied to Clipboard!' : `Copy Number (${callModal.number})`}</span>
+              </button>
+              <button
+                onClick={() => setCallModal(null)}
+                className="w-full py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
+              >
+                Dismiss / Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

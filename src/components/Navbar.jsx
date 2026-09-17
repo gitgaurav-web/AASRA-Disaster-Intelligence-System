@@ -5,9 +5,11 @@ import {
   Move, BarChart3, BookOpen, LogIn, Shield, Building, Check, LogOut,
   Lock, Radio, AlertTriangle, CheckCircle2, Clock, Sun, Moon,
   ShieldAlert, PhoneCall, ExternalLink, ArrowRight, User, ShieldCheck,
-  Globe
+  Activity, Sparkles
 } from 'lucide-react';
 import Logo from '@/components/Logo';
+import NationalEmblem from '@/components/NationalEmblem';
+import LanguageDropdown from '@/components/LanguageDropdown';
 import { NOTIFICATIONS } from '@/data/demoData';
 import { initTheme } from '../theme';
 import { useLanguage } from '@/context/LanguageContext';
@@ -16,17 +18,17 @@ import { useLanguage } from '@/context/LanguageContext';
 // GOVERNMENT PORTAL: EXACT 11 NAV LINKS
 // ==========================================
 const GOV_NAV_LINKS = [
-  { to: '/gov', altTo: '/', labelKey: 'gov_home', fallback: 'Home', icon: Home },
-  { to: '/gov/about', altTo: '/about', labelKey: 'gov_about', fallback: 'About', icon: Info },
-  { to: '/gov/disasters', altTo: '/disasters', labelKey: 'gov_disasters', fallback: 'Disaster Information', icon: Waves },
-  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', labelKey: 'gov_alerts', fallback: 'Live Alerts', icon: Bell },
-  { to: '/gov/risk-map', altTo: '/risk-map', labelKey: 'gov_risk_map', fallback: 'Risk Map', icon: Map },
-  { to: '/gov/habitations', altTo: '/habitations', labelKey: 'gov_habitations', fallback: 'Habitations', icon: Users },
-  { to: '/gov/capacity', altTo: '/capacity', labelKey: 'gov_capacity', fallback: 'Capacity', icon: Gauge },
-  { to: '/gov/relocation', altTo: '/relocation', labelKey: 'gov_relocation', fallback: 'Relocation', icon: Move },
-  { to: '/gov/rescue-teams', altTo: '/rescue-teams', labelKey: 'gov_rescue_teams', fallback: 'Rescue Teams', icon: ShieldAlert },
-  { to: '/gov/analytics', altTo: '/analytics', labelKey: 'gov_analytics', fallback: 'Analytics', icon: BarChart3 },
-  { to: '/gov/resources', altTo: '/resources', labelKey: 'gov_resources', fallback: 'Resources', icon: BookOpen },
+  { to: '/gov', altTo: '/', labelKey: 'gov_home', fallback: 'Home', hi: 'होम', icon: Home },
+  { to: '/gov/about', altTo: '/about', labelKey: 'gov_about', fallback: 'About', hi: 'परिचय', icon: Info },
+  { to: '/gov/disasters', altTo: '/disasters', labelKey: 'gov_disasters', fallback: 'Disaster Intel', hi: 'आपदा सूचना', icon: Waves },
+  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', labelKey: 'gov_alerts', fallback: 'Live Alerts', hi: 'चेतावनियां', icon: Bell },
+  { to: '/gov/risk-map', altTo: '/risk-map', labelKey: 'gov_risk_map', fallback: 'Risk Map', hi: 'मानचित्र', icon: Map },
+  { to: '/gov/habitations', altTo: '/habitations', labelKey: 'gov_habitations', fallback: 'Habitations', hi: 'बस्तियां', icon: Users },
+  { to: '/gov/capacity', altTo: '/capacity', labelKey: 'gov_capacity', fallback: 'Capacity', hi: 'क्षमता', icon: Gauge },
+  { to: '/gov/relocation', altTo: '/relocation', labelKey: 'gov_relocation', fallback: 'Relocation', hi: 'पुनर्वास', icon: Move },
+  { to: '/gov/rescue-teams', altTo: '/rescue-teams', labelKey: 'gov_rescue_teams', fallback: 'Rescue Teams', hi: 'बचाव दल', icon: ShieldAlert },
+  { to: '/gov/analytics', altTo: '/analytics', labelKey: 'gov_analytics', fallback: 'Analytics', hi: 'विश्लेषण', icon: BarChart3 },
+  { to: '/gov/resources', altTo: '/resources', labelKey: 'gov_resources', fallback: 'Resources', hi: 'संसाधन', icon: BookOpen },
 ];
 
 // ==========================================
@@ -39,7 +41,7 @@ const CITIZEN_NAV_LINKS = [
 ];
 
 const ROLES = [
-  { id: 'national', name: 'National NDMA Command', subtitle: 'All-India National Scope', icon: Shield },
+  { id: 'national', name: 'National NDMA Command', subtitle: 'All-India Central Scope', icon: Shield },
   { id: 'chamoli', name: 'DM Chamoli (Uttarakhand)', subtitle: 'District Magistrate Scope', icon: Building },
   { id: 'darbhanga', name: 'DM Darbhanga (Bihar)', subtitle: 'District Magistrate Scope', icon: Building },
   { id: 'wayanad', name: 'DM Wayanad (Kerala)', subtitle: 'District Magistrate Scope', icon: Building },
@@ -50,7 +52,7 @@ function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
     <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 p-2 animate-in fade-in zoom-in duration-100">
       <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Select Administrative Jurisdiction
+          Select Command Jurisdiction
         </p>
       </div>
       <div className="space-y-1">
@@ -91,12 +93,24 @@ function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { language, toggleLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
+
+  // Live IST Clock for Government Portal
+  const [currentTime, setCurrentTime] = useState(() => {
+    return new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Determine Portal Mode (Government vs Citizen)
   const isGovPath =
@@ -121,12 +135,6 @@ export default function Navbar() {
       localStorage.setItem('diastra_portal_mode', 'citizen');
     }
   }, [location.pathname, isGovPath]);
-
-  const switchToGov = () => {
-    setPortalMode('gov');
-    localStorage.setItem('diastra_portal_mode', 'gov');
-    navigate('/gov');
-  };
 
   const switchToCitizen = () => {
     setPortalMode('citizen');
@@ -258,51 +266,68 @@ export default function Navbar() {
 
   const unreadCount = filteredAlerts.length;
 
-  // ==========================================
-  // RENDER: GOVERNMENT COMMAND PORTAL NAVBAR
-  // ==========================================
+  // =========================================================================
+  // 1. RENDER: OFFICIAL GOVERNMENT COMMAND PORTAL NAVBAR (High-Grade GOI)
+  // =========================================================================
   if (portalMode === 'gov') {
     return (
-      <header className="sticky top-0 z-50 shadow-md">
+      <header className="sticky top-0 z-50 shadow-xl font-sans">
         {/* Government of India Official Tricolor Strip */}
-        <div className="h-1 bg-gradient-to-r from-amber-500 via-white to-emerald-600" />
+        <div className="h-1.5 bg-gradient-to-r from-amber-500 via-white to-emerald-600" />
 
-        {/* Top Official National Header */}
-        <div className="bg-slate-900 text-slate-100 px-4 py-1.5 border-b border-slate-800 text-xs">
-          <div className="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 font-serif font-black text-[10px]">
-                🏛️
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold tracking-tight text-white">{t('gov_portal_title')}</span>
-                <span className="text-slate-500">|</span>
-                <span className="text-amber-300/90 font-semibold">
-                  {t('ndma_title')}
-                </span>
+        {/* Official Apex Header: National Emblem + Ministry of Home Affairs + NDMA */}
+        <div className="bg-[#0b1b33] text-white px-4 sm:px-6 py-2 border-b border-slate-700/80">
+          <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            {/* Left: National Seal & Official Identity */}
+            <div className="flex items-center gap-3.5">
+              <NationalEmblem className="w-8 h-10" variant="gold" />
+              <div className="border-l border-slate-700/90 pl-3.5 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-serif font-black text-xs tracking-wider text-amber-300">
+                    भारत सरकार
+                  </span>
+                  <span className="text-slate-500">|</span>
+                  <span className="font-serif text-[11px] tracking-wide text-slate-200">
+                    GOVERNMENT OF INDIA
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-100">
+                    गृह मंत्रालय
+                  </span>
+                  <span className="text-slate-500 text-[10px]">•</span>
+                  <span className="text-[11px] font-semibold text-amber-200">
+                    राष्ट्रीय आपदा प्रबंधन प्राधिकरण (NDMA)
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {t('restricted_badge')}
-              </span>
+            {/* Right: Security Clearance + Live IST Clock + Language Selector + Exit to Citizen */}
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 text-xs">
+              {/* Readiness Badge */}
+              <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-[11px] font-mono">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-emerald-400 font-bold">DEFCON-ALPHA</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-300">READINESS LEVEL 1</span>
+              </div>
 
-              {/* Language Switcher for Government */}
-              <button
-                onClick={toggleLanguage}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 text-[11px] font-bold transition"
-                title="Change Language / भाषा बदलें"
-              >
-                <Globe className="w-3.5 h-3.5 text-amber-400" />
-                <span>{language === 'en' ? 'हिन्दी' : 'English'}</span>
-              </button>
+              {/* Live IST Clock */}
+              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 border border-slate-700 font-mono text-[11px] text-amber-300 font-bold">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>{currentTime} IST</span>
+              </div>
 
-              {/* Portal Switcher: Go back to Citizen Portal */}
+              {/* All-India Multi-Language Selector */}
+              <LanguageDropdown variant="gov" />
+
+              {/* Switch to Public Citizen Portal */}
               <button
                 onClick={switchToCitizen}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-600/90 hover:bg-blue-600 text-white text-[11px] font-bold transition shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold shadow-sm transition active:scale-95 border border-blue-500/50"
+                title="Switch to Public Citizen Portal"
               >
                 <span>🌐 {t('switch_to_citizen')}</span>
                 <ArrowRight className="w-3 h-3" />
@@ -311,32 +336,32 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Main Government Command Navigation Bar */}
-        <nav className="bg-slate-950/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-800 transition-colors">
-          <div className="max-w-[1700px] mx-auto px-4 sm:px-6">
+        {/* Secondary Navigation Bar: Exactly 11 Government Command Modules */}
+        <nav className="bg-[#0f2444] text-white border-b border-slate-700/80">
+          <div className="max-w-[1750px] mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between h-14">
               
-              {/* Government Command Brand Logo */}
-              <Link to="/gov" className="flex items-center gap-2.5 flex-shrink-0">
-                <div className="p-1 rounded-lg bg-blue-600/20 border border-blue-500/30">
-                  <Logo className="w-6 h-6" variant="light" />
+              {/* Government Command Brand Designation */}
+              <Link to="/gov" className="flex items-center gap-2.5 flex-shrink-0 group">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-white shadow-inner">
+                  <Logo className="w-5 h-5" variant="light" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-base font-black tracking-tight text-white leading-tight">
+                    <span className="text-sm font-black tracking-wider text-white font-mono uppercase">
                       DIASTRA DSS
                     </span>
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-mono">
-                      COMMAND
+                    <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-mono">
+                      OFFICIAL
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium block leading-tight">
-                    Disaster Intelligence & Decision Support
+                  <span className="text-[10px] text-slate-300 block font-medium">
+                    Unified Multi-Hazard Incident Command
                   </span>
                 </div>
               </Link>
 
-              {/* Desktop 11 Government Links */}
+              {/* Exact 11 Government Command Modules */}
               <div className="hidden xl:flex items-center gap-0.5 flex-1 justify-center px-4 overflow-x-auto">
                 {GOV_NAV_LINKS.map((link) => {
                   const active = isLinkActive(link.to, link.altTo);
@@ -345,31 +370,30 @@ export default function Navbar() {
                     <Link
                       key={link.to}
                       to={link.to}
-                      className={`px-2 py-1.5 text-xs font-semibold rounded-md transition whitespace-nowrap ${
+                      className={`px-2.5 py-1.5 rounded-lg transition whitespace-nowrap text-center ${
                         active
-                          ? 'bg-blue-600 text-white shadow-sm font-bold'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30 border border-blue-400/40'
+                          : 'text-slate-200 hover:bg-slate-800/80 hover:text-white'
                       }`}
                     >
-                      {label}
+                      <span className="block text-xs leading-none">{label}</span>
+                      <span className="block text-[9px] text-slate-300/80 leading-none mt-0.5 font-normal">
+                        {link.hi}
+                      </span>
                     </Link>
                   );
                 })}
               </div>
 
-              {/* Right Controls */}
+              {/* Right Command Controls */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Theme Toggle */}
                 <button
                   onClick={handleToggleTheme}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                  className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                  title="Toggle Theme"
                 >
-                  {theme === 'dark' ? (
-                    <Sun className="w-4 h-4 text-amber-400" />
-                  ) : (
-                    <Moon className="w-4 h-4 text-slate-300" />
-                  )}
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-200" />}
                 </button>
 
                 {/* Notifications Bell */}
@@ -380,7 +404,7 @@ export default function Navbar() {
                       setRoleOpen(false);
                       setUserDropdown(false);
                     }}
-                    className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                    className="relative p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition"
                     title="CAP Alert Broadcast Feed"
                   >
                     <Bell className="w-4 h-4" />
@@ -392,7 +416,7 @@ export default function Navbar() {
                   </button>
 
                   {notifOpen && (
-                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden text-slate-900 dark:text-slate-100">
                       <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
                         <div className="flex items-center gap-2">
                           <Radio className="w-4 h-4 text-red-400 animate-pulse" />
@@ -452,9 +476,9 @@ export default function Navbar() {
                         setNotifOpen(false);
                         setUserDropdown(false);
                       }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition"
                     >
-                      <activeRoleObj.icon className="w-3.5 h-3.5 text-blue-400" />
+                      <activeRoleObj.icon className="w-3.5 h-3.5 text-amber-400" />
                       <span className="hidden md:inline">{activeRoleObj.name}</span>
                       <span className="md:hidden">{currentRole === 'national' ? 'NDMA' : 'DM'}</span>
                       <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -475,7 +499,7 @@ export default function Navbar() {
                   <div className="relative" ref={userRef}>
                     <button
                       onClick={() => setUserDropdown(!userDropdown)}
-                      className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition"
+                      className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left transition"
                     >
                       <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
                         {authUser.name.charAt(0)}
@@ -524,7 +548,7 @@ export default function Navbar() {
 
             {/* Mobile Dropdown for Govt Links */}
             {mobileOpen && (
-              <div className="xl:hidden py-3 border-t border-slate-800 grid grid-cols-2 gap-1.5">
+              <div className="xl:hidden py-3 border-t border-slate-700 grid grid-cols-2 gap-1.5">
                 {GOV_NAV_LINKS.map((link) => (
                   <Link
                     key={link.to}
@@ -543,45 +567,40 @@ export default function Navbar() {
     );
   }
 
-  // ==========================================
-  // RENDER: CITIZEN PUBLIC SAFETY PORTAL NAVBAR
-  // ==========================================
+  // =========================================================================
+  // 2. RENDER: CITIZEN PUBLIC SAFETY PORTAL NAVBAR (Clean, Dedicated Public)
+  // =========================================================================
   return (
-    <header className="sticky top-0 z-50 shadow-sm">
-      {/* Citizen Top Strip */}
-      <div className="bg-slate-900 text-white px-4 py-1.5 border-b border-slate-800 text-xs">
+    <header className="sticky top-0 z-50 shadow-sm font-sans">
+      {/* Citizen Top Strip: Interactive Helpline with Direct Calling */}
+      <div className="bg-red-700 text-white px-4 py-1.5 text-xs font-semibold shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-semibold text-slate-300 text-[11px]">
+            <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
+            <span className="text-[11px] tracking-wide">
               {t('citizen_portal_sub')}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="tel:112" className="flex items-center gap-1 text-[11px] font-bold text-amber-400 hover:underline">
-              <PhoneCall className="w-3 h-3" /> {t('sos_call')}
-            </a>
-            <span className="text-slate-600">|</span>
-            {/* Direct Switch to Government Command Portal */}
-            <button
-              onClick={switchToGov}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 text-[11px] font-bold transition"
+            <a
+              href="tel:112"
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-red-800/90 hover:bg-red-900 border border-red-500/40 text-[11px] font-bold text-amber-200 transition active:scale-95"
+              title="Direct call National Emergency Helpline 112"
             >
-              <Shield className="w-3 h-3 text-amber-400" />
-              <span>{t('switch_to_gov')}</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
+              <PhoneCall className="w-3 h-3 animate-pulse text-amber-300" />
+              <span>{t('sos_call')}</span>
+            </a>
           </div>
         </div>
       </div>
 
-      {/* Main Citizen Navbar */}
+      {/* Main Citizen Navbar: Only Citizen Links, NO Gov Prompts */}
       <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             
-            {/* Logo */}
+            {/* Citizen Portal Logo */}
             <Link to="/" className="flex items-center gap-3 flex-shrink-0">
               <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20">
                 <Logo className="w-6 h-6" variant="light" />
@@ -596,7 +615,7 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Exact 3 Citizen Links */}
+            {/* Exact 3 Citizen Links (Home, Community Reports, Risk Map) */}
             <div className="hidden md:flex items-center gap-1">
               {CITIZEN_NAV_LINKS.map((link) => {
                 const active = location.pathname === link.to;
@@ -608,7 +627,7 @@ export default function Navbar() {
                     to={link.to}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
                       active
-                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-black'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-black shadow-sm'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
@@ -619,17 +638,10 @@ export default function Navbar() {
               })}
             </div>
 
-            {/* Right Actions: Language Switcher, Theme Toggle & Citizen Login */}
+            {/* Right Actions: All-India Multi-Language Dropdown, Theme Toggle, Citizen Login */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Language Switcher */}
-              <button
-                onClick={toggleLanguage}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 transition active:scale-95 shadow-sm"
-                title="Switch Language / भाषा बदलें"
-              >
-                <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>{language === 'en' ? 'हिन्दी' : 'English'}</span>
-              </button>
+              {/* All-India Language Dropdown */}
+              <LanguageDropdown variant="citizen" />
 
               {/* Theme toggle */}
               <button
@@ -637,11 +649,7 @@ export default function Navbar() {
                 className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 title="Toggle Theme"
               >
-                {theme === 'dark' ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-slate-600" />
-                )}
+                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
               </button>
 
               {/* Citizen Login or Profile */}
@@ -688,18 +696,6 @@ export default function Navbar() {
                   <span>{t(link.labelKey) || link.fallback}</span>
                 </Link>
               ))}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    switchToGov();
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 text-xs font-bold"
-                >
-                  <span>{t('switch_to_gov')}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
             </div>
           )}
         </div>

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import StatCard from '@/components/StatCard';
+import NationalEmblem from '@/components/NationalEmblem';
 
 export default function Home() {
   const [habitations, setHabitations] = useState([]);
@@ -166,8 +167,8 @@ export default function Home() {
 
   return (
     <div className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-16 transition-colors duration-200">
-      {/* EXECUTIVE HERO COMMAND STRIP (ADAPTIVE LIGHT & DARK) */}
-      <section className="relative bg-blue-900 dark:bg-slate-900 border-b border-blue-800 dark:border-slate-800 text-white overflow-hidden transition-colors duration-200">
+      {/* EXECUTIVE HERO COMMAND STRIP (OFFICIAL GOVERNMENT APEX) */}
+      <section className="relative bg-[#0b1d3a] dark:bg-[#071326] border-b border-slate-700/80 text-white overflow-hidden transition-colors duration-200">
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -177,52 +178,58 @@ export default function Home() {
           }}
         />
 
-        <div className="relative max-w-[1600px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="relative max-w-[1700px] mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 dark:bg-blue-500/10 border border-white/20 dark:border-blue-400/30 text-white dark:text-blue-300 text-xs font-bold font-mono">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                  DISASTER · CRISIS DECISION SUPPORT
-                </span>
-
-                {!isNational && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold font-mono">
-                    <Lock className="w-3 h-3 text-emerald-400" />
-                    DM {districtScope.toUpperCase()} COMMAND
-                  </span>
-                )}
+            <div className="max-w-3xl flex items-start gap-5">
+              <div className="hidden sm:block p-3 rounded-2xl bg-slate-900/80 border border-slate-700/80 shadow-2xl flex-shrink-0">
+                <NationalEmblem className="w-14 h-16" variant="gold" />
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-4">
-                National Disaster Support & Evacuation Intelligence
-              </h1>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-300 text-xs font-bold font-mono">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    NDMA NEOC • OPERATIONAL DASHBOARD
+                  </span>
 
-              <p className="text-sm sm:text-base text-blue-100 dark:text-slate-300 leading-relaxed max-w-2xl">
-                {isNational ? (
-                  <>
-                    Centralized spatial command system orchestrating real-time hazard surge telemetry, local carrying capacity assessment, and algorithm-matched safe shelter evacuation corridors.
-                  </>
-                ) : (
-                  <>
-                    Command portal restricted to <strong>District Magistrate {districtScope}</strong>. Coordinating localized hazard surge simulation, CAP early warning cell broadcasts, and immediate relocation queues.
-                  </>
-                )}
-              </p>
+                  {!isNational && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold font-mono">
+                      <Lock className="w-3 h-3 text-emerald-400" />
+                      DISTRICT MAGISTRATE ({districtScope.toUpperCase()}) SCOPE
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight">
+                  National Disaster Decision Support & Incident Command System
+                </h1>
+
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                  {isNational ? (
+                    <>
+                      Centralized spatial command system under the <strong>National Disaster Management Act, 2005</strong>. Orchestrating real-time hazard surge telemetry, local carrying capacity deficit analysis, and algorithmic safe shelter evacuation corridors across all vulnerable Indian districts.
+                    </>
+                  ) : (
+                    <>
+                      Command portal restricted to <strong>District Magistrate {districtScope}</strong>. Coordinating localized hazard surge simulation, CAP early warning cell broadcasts, and immediate relocation queues.
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
 
             {/* Quick Strategic Actions */}
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 min-w-[240px]">
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 min-w-[240px]">
               <Link
-                to="/risk-map"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95"
+                to="/gov/risk-map"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-lg transition active:scale-95 border border-blue-400/30"
               >
                 <MapIcon className="w-4 h-4" />
                 Launch Full GIS Risk Map
               </Link>
               <Link
-                to="/relocation"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-800/80 hover:bg-blue-800 dark:bg-slate-800 dark:hover:bg-slate-700 border border-blue-700 dark:border-slate-700 text-white text-xs font-bold rounded-xl transition active:scale-95"
+                to="/gov/relocation"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-600 transition active:scale-95"
               >
                 <Move className="w-4 h-4 text-emerald-400" />
                 Evacuation Priority Queue
