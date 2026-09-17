@@ -332,8 +332,8 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Secondary Navigation Bar: Exactly 11 Government Command Modules */}
-        <nav className="bg-[#0f2444] text-white border-b border-slate-700/80">
+        {/* Tier 2: Government Incident Command Portal Header (Identity & Session Controls) */}
+        <div className="bg-[#0f2444] text-white border-b border-slate-700/80">
           <div className="max-w-[1750px] mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between h-14">
               
@@ -347,7 +347,7 @@ export default function Navbar() {
                     <span className="text-sm font-black tracking-wider text-white font-mono uppercase">
                       DIASTRA DSS
                     </span>
-                    <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-mono">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-bold tracking-tight">
                       OFFICIAL
                     </span>
                   </div>
@@ -357,29 +357,8 @@ export default function Navbar() {
                 </div>
               </Link>
 
-              {/* Exact 11 Government Command Modules */}
-              <div className="hidden xl:flex items-center gap-1 flex-1 justify-center px-4 overflow-x-auto">
-                {GOV_NAV_LINKS.map((link) => {
-                  const active = isLinkActive(link.to, link.altTo);
-                  const label = t(link.labelKey) || link.fallback;
-                  return (
-                    <Link
-                      key={link.to}
-                      to={link.to}
-                      className={`px-3 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                        active
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 border border-blue-400/40'
-                          : 'text-slate-200 hover:bg-slate-800/80 hover:text-white'
-                      }`}
-                    >
-                      <span>{label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-
               {/* Right Command Controls */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
                 {/* Theme Toggle */}
                 <button
                   onClick={handleToggleTheme}
@@ -459,8 +438,8 @@ export default function Navbar() {
                   {isDMLocked ? (
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-emerald-950/40 border-emerald-700 text-emerald-300 text-xs font-bold">
                       <Lock className="w-3 h-3 text-emerald-400" />
-                      <span className="hidden md:inline">{activeRoleObj.name}</span>
-                      <span className="md:hidden">DM</span>
+                      <span className="hidden sm:inline">{activeRoleObj.name}</span>
+                      <span className="sm:hidden">DM</span>
                     </div>
                   ) : (
                     <button
@@ -472,8 +451,8 @@ export default function Navbar() {
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition"
                     >
                       <activeRoleObj.icon className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="hidden md:inline">{activeRoleObj.name}</span>
-                      <span className="md:hidden">{currentRole === 'national' ? 'NDMA' : 'DM'}</span>
+                      <span className="hidden sm:inline">{activeRoleObj.name}</span>
+                      <span className="sm:hidden">{currentRole === 'national' ? 'NDMA' : 'DM'}</span>
                       <ChevronDown className="w-3 h-3 text-slate-400" />
                     </button>
                   )}
@@ -529,31 +508,76 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                {/* Mobile Menu Button */}
+                {/* Mobile Menu Button (< lg) */}
                 <button
                   onClick={() => setMobileOpen(!mobileOpen)}
-                  className="xl:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800"
+                  className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-slate-800 transition"
+                  aria-label="Toggle Menu"
                 >
                   {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Mobile Dropdown for Govt Links */}
+            {/* Mobile Dropdown for Govt Links (Shown below lg when open) */}
             {mobileOpen && (
-              <div className="xl:hidden py-3 border-t border-slate-700 grid grid-cols-2 gap-1.5">
-                {GOV_NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    onClick={() => setMobileOpen(false)}
-                    className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white"
-                  >
-                    {t(link.labelKey) || link.fallback}
-                  </Link>
-                ))}
+              <div className="lg:hidden py-3 border-t border-slate-700/80 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {GOV_NAV_LINKS.map((link) => {
+                  const active = isLinkActive(link.to, link.altTo);
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition ${
+                        active
+                          ? 'bg-blue-600 text-white font-bold shadow'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span className="truncate">{t(link.labelKey) || link.fallback}</span>
+                    </Link>
+                  );
+                })}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Tier 3: Dedicated Full-Width Navigation Bar for the 11 Command Modules */}
+        <nav className="hidden lg:block bg-[#09172c] border-b border-slate-700/90 shadow-sm">
+          <div className="max-w-[1750px] mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-1 xl:gap-1.5">
+                {GOV_NAV_LINKS.map((link) => {
+                  const active = isLinkActive(link.to, link.altTo);
+                  const label = t(link.labelKey) || link.fallback;
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-md text-xs font-bold transition whitespace-nowrap ${
+                        active
+                          ? 'bg-blue-600 text-white shadow border-b-2 border-amber-400'
+                          : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      {Icon && <Icon className="w-3.5 h-3.5 opacity-80 hidden xl:inline" />}
+                      <span>{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Real-Time Operational Status Indicator */}
+              <div className="hidden 2xl:flex items-center gap-2 text-[11px] font-mono text-emerald-300 bg-emerald-950/40 px-3 py-1 rounded border border-emerald-700/40">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>COMMAND CONSOLE • ACTIVE</span>
+              </div>
+            </div>
           </div>
         </nav>
       </header>
