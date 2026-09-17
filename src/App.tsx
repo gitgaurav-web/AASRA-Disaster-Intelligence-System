@@ -8,6 +8,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 // Citizen Portal Pages
 import CitizenHome from '@/pages/CitizenHome';
 import CitizenLogin from '@/pages/CitizenLogin';
+import CitizenRiskMap from '@/pages/CitizenRiskMap';
 
 // Government Portal Pages
 import Home from '@/pages/Home';
@@ -42,7 +43,7 @@ function App() {
     <LanguageProvider>
       <BrowserRouter>
         <ScrollToTop />
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200 overflow-x-hidden w-full">
           <DemoBanner />
           <Navbar />
         <main className="flex-1">
@@ -52,7 +53,7 @@ function App() {
                 ========================================== */}
             <Route path="/" element={<CitizenHome />} />
             <Route path="/community-reports" element={<CommunityReports />} />
-            <Route path="/risk-map" element={<RiskMap />} />
+            <Route path="/risk-map" element={<CitizenRiskMap />} />
             <Route path="/citizen-login" element={<CitizenLogin />} />
 
             {/* ==========================================
