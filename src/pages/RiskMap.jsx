@@ -540,6 +540,48 @@ export default function RiskMap() {
               </div>
             </div>
 
+            {/* Active Tactical Evacuation Vector Alert */}
+            {(selectedHab || selectedShelter) && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                    <Navigation className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                        ⚡ Tactical Shortest Evacuation Vector Active
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
+                      Target Safe Shelter:{" "}
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {selectedShelter?.name || "Automated Shortest Path Safe Shelter"}
+                      </span>
+                    </p>
+                    {selectedHab && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Incident Zone: <strong>{selectedHab.name}</strong> ({selectedHab.hazard} · Risk Level: {selectedHab.riskLevel})
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedHab(null);
+                      setSelectedShelter(null);
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 text-xs font-bold"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Clear Vector</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Tactical High-Resolution Leaflet Map */}
             <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-md">
               <MapView

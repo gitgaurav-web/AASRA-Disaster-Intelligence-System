@@ -14,8 +14,14 @@ export default function LiveRiskInspector({ habitation, onClose }) {
     if (!lat || !lon) return;
 
     setLoading(true);
-    fetch(`http://localhost:8001/api/disaster/live-multi-hazard/${lat}/${lon}`)
-      .then(res => res.json())
+    fetch(`/api/disaster/live-multi-hazard/${lat}/${lon}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Proxy error");
+        return res.json();
+      })
+      .catch(() => {
+        return fetch(`http://127.0.0.1:8000/api/disaster/live-multi-hazard/${lat}/${lon}`).then(res => res.json());
+      })
       .then(data => {
         setTelemetry(data);
         setLoading(false);

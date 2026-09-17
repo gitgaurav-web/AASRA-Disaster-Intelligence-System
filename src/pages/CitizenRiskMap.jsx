@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import MapView from "@/components/MapView";
 import MapLegend from "@/components/MapLegend";
+import { calculateHaversineKm } from "@/services/osrmRouting";
 import { useLanguage } from "@/context/LanguageContext";
 
 // Exact District Center Coordinates across India
@@ -190,9 +191,16 @@ export default function CitizenRiskMap() {
     });
   }, [habitations, selectedDistrict, searchQuery]);
 
-  // Filtered Shelters
+  // Active Danger or GPS Origin Coordinates
+  const activeOriginCoords = useMemo(() => {
+    if (selectedHabitation?.coords) return selectedHabitation.coords;
+    if (userLocation) return [userLocation.lat, userLocation.lng];
+    return null;
+  }, [selectedHabitation, userLocation]);
+
+  // Filtered Shelters, dynamically sorted by shortest safe path distance
   const filteredShelters = useMemo(() => {
-    return shelters.filter((s) => {
+    const list = shelters.filter((s) => {
       if (selectedDistrict !== "all" && s.district?.toLowerCase() !== selectedDistrict.toLowerCase()) {
         return false;
       }
@@ -205,7 +213,34 @@ export default function CitizenRiskMap() {
       }
       return true;
     });
-  }, [shelters, selectedDistrict, facilityFilter, searchQuery]);
+
+    if (!activeOriginCoords) return list;
+
+    // Calculate road-calibrated distances from the active danger origin
+    const withDistance = list.map((s) => {
+      if (!s.coords) return { ...s, distanceKm: null };
+      const directKm = calculateHaversineKm(
+        activeOriginCoords[0],
+        activeOriginCoords[1],
+        s.coords[0],
+        s.coords[1]
+      );
+      const roadKm = parseFloat((directKm * 1.28).toFixed(1));
+      return {
+        ...s,
+        distanceKm: roadKm,
+      };
+    });
+
+    // Rank from shortest road distance to longest
+    withDistance.sort((a, b) => {
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+    return withDistance;
+  }, [shelters, selectedDistrict, facilityFilter, searchQuery, activeOriginCoords]);
 
   // Handle Shelter Card Click
   const handleSelectShelter = (site) => {
@@ -362,37 +397,57 @@ export default function CitizenRiskMap() {
         </div>
 
         {/* 4. ACTIVE EVACUATION HUD BANNER */}
-        {(selectedHabitation || selectedShelter) && (
-          <div className="mb-6 p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+        {(selectedHabitation || selectedShelter || userLocation) && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow">
                 <Navigation className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                  Designated Evacuation Corridor
-                </p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
-                  Route to: <span className="text-blue-600 dark:text-blue-400">{selectedShelter?.name || "Nearest Designated Shelter"}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span>Shortest Safe Path Active</span>
+                  </span>
+                  {(selectedShelter?.distanceKm || filteredShelters[0]?.distanceKm) && (
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                      ~{selectedShelter?.distanceKm || filteredShelters[0]?.distanceKm} km Road Route
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                  Safe Shelter:{" "}
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    {selectedShelter?.name || filteredShelters[0]?.name || "Nearest Designated Shelter"}
+                  </span>
                 </p>
                 {selectedHabitation && (
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Departing from: <strong>{selectedHabitation.name}</strong> ({selectedHabitation.district})
+                    Departing Danger Zone: <strong>{selectedHabitation.name}</strong> ({selectedHabitation.hazard || "Hazard"} · {selectedHabitation.district})
+                  </p>
+                )}
+                {userLocation && !selectedHabitation && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Departing: <strong>Live Citizen GPS Location</strong>
                   </p>
                 )}
               </div>
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-center">
-              {selectedShelter && selectedShelter.coords && (
+              {((selectedShelter?.coords) || (filteredShelters[0]?.coords)) && (
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${selectedShelter.coords[0]},${selectedShelter.coords[1]}`}
+                  href={
+                    activeOriginCoords
+                      ? `https://www.google.com/maps/dir/?api=1&origin=${activeOriginCoords[0]},${activeOriginCoords[1]}&destination=${(selectedShelter?.coords || filteredShelters[0].coords)[0]},${(selectedShelter?.coords || filteredShelters[0].coords)[1]}&travelmode=driving`
+                      : `https://www.google.com/maps/dir/?api=1&destination=${(selectedShelter?.coords || filteredShelters[0].coords)[0]},${(selectedShelter?.coords || filteredShelters[0].coords)[1]}`
+                  }
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow"
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition shadow active:scale-95"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Turn-by-Turn GPS Navigation</span>
+                  <span>Navigate Shortest Path (Google Maps)</span>
                 </a>
               )}
               <button
@@ -400,7 +455,7 @@ export default function CitizenRiskMap() {
                   setSelectedHabitation(null);
                   setSelectedShelter(null);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Clear</span>
@@ -487,20 +542,29 @@ export default function CitizenRiskMap() {
                     No relief shelters found matching your search.
                   </div>
                 ) : (
-                  filteredShelters.map((site) => {
-                    const isSelected = selectedShelter?.id === site.id;
+                  filteredShelters.map((site, index) => {
+                    const isSelected = selectedShelter?.id === site.id || (!selectedShelter && index === 0 && activeOriginCoords);
+                    const isShortest = activeOriginCoords && index === 0;
                     const availPct = Math.round(((site.available || 0) / (site.capacity || 1)) * 100);
 
                     return (
                       <div
                         key={site.id}
                         onClick={() => handleSelectShelter(site)}
-                        className={`p-3.5 rounded-2xl border text-xs transition cursor-pointer ${
+                        className={`p-3.5 rounded-2xl border text-xs transition cursor-pointer relative ${
                           isSelected
-                            ? "bg-blue-50/90 dark:bg-blue-950/80 border-blue-500 shadow-md ring-1 ring-blue-500"
-                            : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700"
+                            ? "bg-emerald-50/90 dark:bg-emerald-950/80 border-emerald-500 shadow-md ring-1 ring-emerald-500"
+                            : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-slate-700"
                         }`}
                       >
+                        {/* Shortest Safe Path Badge */}
+                        {isShortest && (
+                          <div className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-black text-[10px] shadow-sm tracking-wide">
+                            <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
+                            <span>⚡ #1 SHORTEST SAFE PATH ({site.distanceKm} KM)</span>
+                          </div>
+                        )}
+
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h3 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">
@@ -509,6 +573,11 @@ export default function CitizenRiskMap() {
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                               📍 {site.district} District
                             </p>
+                            {site.distanceKm !== undefined && site.distanceKm !== null && (
+                              <p className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                                <span>🛣️ Road Distance: ~{site.distanceKm} km</span>
+                              </p>
+                            )}
                           </div>
                           <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300">
                             {site.available} Spaces
@@ -550,20 +619,28 @@ export default function CitizenRiskMap() {
                               e.stopPropagation();
                               handleSelectShelter(site);
                             }}
-                            className="flex-1 py-1.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm ${
+                              isShortest
+                                ? "bg-emerald-600 hover:bg-emerald-500"
+                                : "bg-blue-600 hover:bg-blue-500"
+                            }`}
                           >
                             <Navigation className="w-3.5 h-3.5" />
-                            <span>Plot Route</span>
+                            <span>{isShortest ? "Selected Shortest Route" : "Plot Route"}</span>
                           </button>
                           <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${site.coords[0]},${site.coords[1]}`}
+                            href={
+                              activeOriginCoords
+                                ? `https://www.google.com/maps/dir/?api=1&origin=${activeOriginCoords[0]},${activeOriginCoords[1]}&destination=${site.coords[0]},${site.coords[1]}&travelmode=driving`
+                                : `https://www.google.com/maps/dir/?api=1&destination=${site.coords[0]},${site.coords[1]}`
+                            }
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="p-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                             title="Open Turn-by-Turn GPS in Google Maps"
                           >
-                            <ExternalLink className="w-4 h-4 text-blue-600" />
+                            <ExternalLink className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           </a>
                         </div>
                       </div>

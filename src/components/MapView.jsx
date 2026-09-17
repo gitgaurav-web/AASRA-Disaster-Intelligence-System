@@ -27,7 +27,7 @@ import {
   Shield,
 } from "lucide-react";
 import LiveRiskInspector from "./LiveRiskInspector";
-import { getEvacuationRoute } from "../services/osrmRouting";
+import { getEvacuationRoute, findShortestEvacuationPath } from "../services/osrmRouting";
 
 // =========================================================================
 // HIGH-VISIBILITY GOOGLE-STYLE SVG PINS (100% Reliable, Zero Image URLs)
@@ -257,54 +257,60 @@ export default function MapView({
     return null;
   };
 
-  // Find target shelter for selected habitation
-  const selHabCoords = selectedHabitation ? getCoords(selectedHabitation) : null;
-  const targetShelter = useMemo(() => {
-    if (selectedShelter) return selectedShelter;
-    if (!selectedHabitation || !selHabCoords || relocationSites.length === 0) return null;
+  const selHabCoords = useMemo(() => getCoords(selectedHabitation), [selectedHabitation]);
 
-    let minD = Infinity;
-    let best = null;
-    for (const site of relocationSites) {
-      const sCoords = getCoords(site);
-      if (!sCoords) continue;
-      const d =
-        Math.pow(selHabCoords[0] - sCoords[0], 2) +
-        Math.pow(selHabCoords[1] - sCoords[1], 2);
-      if (d < minD) {
-        minD = d;
-        best = { ...site, coords: sCoords };
-      }
-    }
-    return best;
-  }, [selectedHabitation, selectedShelter, selHabCoords, relocationSites]);
+  // Origin Coordinates (Danger Zone or User Location)
+  const originCoords = useMemo(() => {
+    return selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null);
+  }, [selHabCoords, userLocation]);
 
-  // Road Routing calculation via OSRM
+  const [activeTargetShelter, setActiveTargetShelter] = useState(null);
   const [roadRoute, setRoadRoute] = useState(null);
-  useEffect(() => {
-    const originCoords = selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null);
-    const destCoords = targetShelter ? getCoords(targetShelter) : null;
+  const [isShortestCandidate, setIsShortestCandidate] = useState(false);
 
-    if (originCoords && destCoords) {
-      let mounted = true;
-      getEvacuationRoute(originCoords, destCoords).then((route) => {
-        if (mounted && route) setRoadRoute(route);
-      });
+  // Calculate Shortest Safe Path automatically
+  useEffect(() => {
+    let mounted = true;
+
+    if (!originCoords || relocationSites.length === 0) {
+      setActiveTargetShelter(null);
+      setRoadRoute(null);
+      setIsShortestCandidate(false);
+      return;
+    }
+
+    // If user explicitly picked a shelter from the UI, route directly to it
+    if (selectedShelter) {
+      const destCoords = getCoords(selectedShelter);
+      if (destCoords) {
+        setActiveTargetShelter(selectedShelter);
+        setIsShortestCandidate(false);
+        getEvacuationRoute(originCoords, destCoords).then((route) => {
+          if (mounted && route) setRoadRoute(route);
+        });
+      }
       return () => {
         mounted = false;
       };
-    } else {
-      setRoadRoute(null);
     }
-  }, [selectedHabitation?.id, targetShelter?.id, userLocation]);
+
+    // Otherwise, automatically calculate the SHORTEST PATH to the closest safe shelter!
+    findShortestEvacuationPath(originCoords, relocationSites).then(({ bestShelter, route }) => {
+      if (mounted && bestShelter) {
+        setActiveTargetShelter(bestShelter);
+        setRoadRoute(route);
+        setIsShortestCandidate(true);
+      }
+    }).catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [originCoords, selectedShelter, relocationSites]);
 
   const fallbackRoute =
-    (selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null)) &&
-    targetShelter
-      ? [
-          selHabCoords || [userLocation.lat, userLocation.lng],
-          getCoords(targetShelter),
-        ]
+    originCoords && activeTargetShelter
+      ? [originCoords, getCoords(activeTargetShelter)]
       : null;
 
   const activeCorridorCoords = roadRoute?.coordinates || fallbackRoute;
@@ -378,8 +384,7 @@ export default function MapView({
 
   // Google Maps Deep Link
   const openGoogleMapsDirections = () => {
-    const originCoords = selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null);
-    const destCoords = targetShelter ? getCoords(targetShelter) : null;
+    const destCoords = activeTargetShelter ? getCoords(activeTargetShelter) : null;
     if (!destCoords) return;
 
     let url = "";
@@ -561,7 +566,7 @@ export default function MapView({
                       }`}
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>{isSelected ? "Clear Evacuation Route" : "Show Safe Route to Shelter"}</span>
+                      <span>{isSelected ? "Clear Evacuation Route" : "Show Shortest Safe Path"}</span>
                     </button>
                   </div>
                 </Popup>
@@ -575,7 +580,7 @@ export default function MapView({
             const coords = getCoords(site);
             if (!coords || !coords[0] || !coords[1]) return null;
 
-            const isSelected = targetShelter?.id === site.id;
+            const isSelected = activeTargetShelter?.id === site.id;
 
             return (
               <Marker
@@ -656,31 +661,39 @@ export default function MapView({
       {/* GOOGLE MAPS STYLE FLOATING CONTROLS                                  */}
       {/* ===================================================================== */}
 
-      {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Route is active) */}
-      {roadRoute && targetShelter && (
-        <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
+      {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Shortest Route is active) */}
+      {roadRoute && activeTargetShelter && (
+        <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow flex-shrink-0 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow flex-shrink-0 mt-0.5">
               <Navigation className="w-4 h-4 animate-pulse" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-slate-900 dark:text-white truncate">
-                  {targetShelter.name}
+                <span className="font-black text-emerald-600 dark:text-emerald-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                  <span>⚡ Shortest Safe Path Selected</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex-shrink-0">
-                  {roadRoute.isRoadNetwork ? "Road Route" : "Direct Vector"}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex-shrink-0">
+                  {roadRoute.isRoadNetwork ? "Road Verified" : "Direct Vector"}
                 </span>
               </div>
-              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-                <span>🛣️ <strong>{roadRoute.distanceKm} km</strong></span>
-                <span>⏱️ <strong>~{roadRoute.durationMinutes} mins drive</strong></span>
+              <p className="text-slate-900 dark:text-white font-bold text-xs mt-1 truncate">
+                To Safe Shelter: <span className="text-blue-600 dark:text-blue-400">{activeTargetShelter.name}</span>
+              </p>
+              {selectedHabitation && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  From: <strong className="text-red-600 dark:text-red-400">⚠️ {selectedHabitation.name}</strong> (Danger Zone)
+                </p>
+              )}
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-700 dark:text-slate-200 font-bold">
+                <span>🛣️ Distance: <strong className="text-emerald-600 dark:text-emerald-400">{roadRoute.distanceKm} km</strong></span>
+                <span>⏱️ Transit: <strong>~{roadRoute.durationMinutes} mins</strong></span>
               </div>
               <button
                 onClick={openGoogleMapsDirections}
                 className="mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
-                <span>Open in Google Maps for Turn-by-Turn GPS</span>
+                <span>Open Turn-by-Turn GPS in Google Maps</span>
                 <ExternalLink className="w-3 h-3" />
               </button>
             </div>
