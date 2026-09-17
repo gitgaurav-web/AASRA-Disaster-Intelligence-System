@@ -272,9 +272,6 @@ export default function Navbar() {
   if (portalMode === 'gov') {
     return (
       <header className="sticky top-0 z-50 shadow-xl font-sans">
-        {/* Government of India Official Tricolor Strip */}
-        <div className="h-1.5 bg-gradient-to-r from-amber-500 via-white to-emerald-600" />
-
         {/* Official Apex Header: National Emblem + Ministry of Home Affairs + NDMA */}
         <div className="bg-[#0b1b33] text-white px-4 sm:px-6 py-2 border-b border-slate-700/80">
           <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-4">
