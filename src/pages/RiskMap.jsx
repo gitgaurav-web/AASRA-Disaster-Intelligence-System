@@ -15,6 +15,7 @@ import {
   Building,
   ShieldAlert,
   Layers,
+  RotateCcw,
 } from "lucide-react";
 
 import MapView from "@/components/MapView";
@@ -45,9 +46,21 @@ const DEFAULT_SHELTERS = [
 
 const DISTRICT_COORDINATES = {
   national: { center: [22.8, 79.5], zoom: 5 },
+  all: { center: [22.8, 79.5], zoom: 5 },
   chamoli: { center: [30.4034, 79.324], zoom: 11 },
+  Chamoli: { center: [30.4034, 79.324], zoom: 11 },
   darbhanga: { center: [26.1554, 85.8918], zoom: 11 },
+  Darbhanga: { center: [26.1554, 85.8918], zoom: 11 },
   wayanad: { center: [11.6854, 76.132], zoom: 11 },
+  Wayanad: { center: [11.6854, 76.132], zoom: 11 },
+  varanasi: { center: [25.3176, 82.9739], zoom: 11 },
+  Varanasi: { center: [25.3176, 82.9739], zoom: 11 },
+  dibrugarh: { center: [26.1445, 91.7362], zoom: 11 },
+  Dibrugarh: { center: [26.1445, 91.7362], zoom: 11 },
+  mayurbhanj: { center: [21.9397, 86.3264], zoom: 11 },
+  Mayurbhanj: { center: [21.9397, 86.3264], zoom: 11 },
+  chamarajanagar: { center: [11.854, 76.6288], zoom: 11 },
+  Chamarajanagar: { center: [11.854, 76.6288], zoom: 11 },
 };
 
 export default function RiskMap() {
@@ -243,31 +256,107 @@ export default function RiskMap() {
     loadGISData();
   }, []);
 
-  // Filtered Habitations strictly scoped to Active District Scope
+  // Smooth Camera FlyTo District helper
+  const handleFlyToDistrict = (d) => {
+    if (!d || d === "all") {
+      setMapCenter([22.8, 79.5]);
+      setMapZoom(5);
+      return;
+    }
+    const target = DISTRICT_COORDINATES[d] || DISTRICT_COORDINATES[d.toLowerCase()];
+    if (target) {
+      setMapCenter(target.center);
+      setMapZoom(target.zoom);
+    } else {
+      const match = habitations.find((h) => h.district?.toLowerCase() === d.toLowerCase());
+      if (match?.coords) {
+        setMapCenter(match.coords);
+        setMapZoom(11);
+      }
+    }
+  };
+
+  // Filtered Habitations strictly scoped to Active District Scope and Matrix Filters
   const filtered = useMemo(() => {
     return habitations.filter((h) => {
+      // 1. Role-locked district scope
       if (districtScope && h.district?.toLowerCase() !== districtScope.toLowerCase()) {
         return false;
       }
-      if (filters.district && filters.district !== "all" && h.district !== filters.district) {
+      // 2. District filter from Matrix
+      if (filters.district && filters.district !== "all" && h.district?.toLowerCase() !== filters.district.toLowerCase()) {
         return false;
       }
-      if (filters.hazard && h.hazard !== filters.hazard) return false;
-      if (filters.riskLevel && h.riskLevel !== filters.riskLevel) return false;
-      if (filters.vulnerability && h.vulnerability !== filters.vulnerability) return false;
-      if (filters.capacityStatus && h.capacityStatus !== filters.capacityStatus) return false;
-      if (filters.priority && h.priority !== filters.priority) return false;
+      // 3. Search query (matches name, district, or hazard)
+      if (filters.search) {
+        const q = filters.search.toLowerCase().trim();
+        const matchName = h.name?.toLowerCase().includes(q);
+        const matchDistrict = h.district?.toLowerCase().includes(q);
+        const matchHazard = (h.hazard || "").toLowerCase().includes(q);
+        if (!matchName && !matchDistrict && !matchHazard) return false;
+      }
+      // 4. Hazard filter (case-insensitive & lenient with forest fire synonyms)
+      if (filters.hazard && filters.hazard !== "all") {
+        const hHaz = (h.hazard || "").toLowerCase();
+        const fHaz = filters.hazard.toLowerCase();
+        const matchWildfire =
+          (fHaz.includes("fire") || fHaz.includes("wildfire")) &&
+          (hHaz.includes("fire") || hHaz.includes("wildfire"));
+        if (hHaz !== fHaz && !hHaz.includes(fHaz) && !fHaz.includes(hHaz) && !matchWildfire) {
+          return false;
+        }
+      }
+      // 5. Risk Level filter (Critical, High, Moderate/Medium, Low)
+      if (filters.riskLevel && filters.riskLevel !== "all") {
+        const hRisk = (h.riskLevel || h.risk_level || "").toLowerCase();
+        const fRisk = filters.riskLevel.toLowerCase();
+        const normH = hRisk === "medium" ? "moderate" : hRisk;
+        const normF = fRisk === "medium" ? "moderate" : fRisk;
+        if (normH !== normF) return false;
+      }
+      // 6. Vulnerability filter (Critical, Very High, High, Moderate, Low)
+      if (filters.vulnerability && filters.vulnerability !== "all") {
+        const hVuln = (h.vulnerability || "").toLowerCase();
+        const fVuln = filters.vulnerability.toLowerCase();
+        if (hVuln !== fVuln && !hVuln.includes(fVuln) && !fVuln.includes(hVuln)) {
+          return false;
+        }
+      }
+      // 7. Capacity Status filter (Critical, Deficit, Moderate/Warning, Adequate)
+      if (filters.capacityStatus && filters.capacityStatus !== "all") {
+        const hCap = (h.capacityStatus || h.capacity_status || "").toLowerCase();
+        const fCap = filters.capacityStatus.toLowerCase();
+        const isCritMatch = fCap.includes("crit") && hCap.includes("crit");
+        const isDeficitMatch = fCap.includes("deficit") && hCap.includes("deficit");
+        const isModMatch =
+          (fCap.includes("mod") || fCap.includes("warn")) &&
+          (hCap.includes("mod") || hCap.includes("warn"));
+        const isAdequateMatch = fCap.includes("adeq") && hCap.includes("adeq");
+        if (hCap !== fCap && !isCritMatch && !isDeficitMatch && !isModMatch && !isAdequateMatch) {
+          return false;
+        }
+      }
+      // 8. Relocation Priority filter (Immediate, Short-Term, Planned, Monitor)
+      if (filters.priority && filters.priority !== "all") {
+        const hPri = (h.priority || "").toLowerCase();
+        const fPri = filters.priority.toLowerCase();
+        if (hPri !== fPri && !hPri.includes(fPri) && !fPri.includes(hPri)) {
+          return false;
+        }
+      }
       return true;
     });
   }, [habitations, filters, districtScope]);
 
-  // Filter Relocation Sites strictly scoped to Active District Scope
+  // Filter Relocation Sites strictly scoped to Active District Scope or user-selected District
   const scopedSites = useMemo(() => {
-    if (!districtScope) return relocationSites;
+    const targetDistrict =
+      districtScope || (filters.district && filters.district !== "all" ? filters.district : null);
+    if (!targetDistrict) return relocationSites;
     return relocationSites.filter(
-      (s) => s.district?.toLowerCase() === districtScope.toLowerCase()
+      (s) => s.district?.toLowerCase() === targetDistrict.toLowerCase()
     );
-  }, [relocationSites, districtScope]);
+  }, [relocationSites, districtScope, filters.district]);
 
   const districts = useMemo(() => {
     if (districtScope) return [districtScope];
@@ -284,11 +373,12 @@ export default function RiskMap() {
     return habitations;
   }, [habitations, districtScope]);
 
-  // Real-time Dynamic Statistics derived from active scope
+  // Real-time Dynamic Statistics derived from active filtered subset
   const totalInScope = scopedBaseHabitations.length;
-  const criticalCount = scopedBaseHabitations.filter((h) => h.riskLevel === "Critical").length;
-  const highRiskCount = scopedBaseHabitations.filter((h) => h.riskLevel === "High").length;
-  const relocationCount = scopedBaseHabitations.filter(
+  const filteredCount = filtered.length;
+  const criticalCount = filtered.filter((h) => (h.riskLevel || h.risk_level) === "Critical").length;
+  const highRiskCount = filtered.filter((h) => (h.riskLevel || h.risk_level) === "High").length;
+  const relocationCount = filtered.filter(
     (h) => h.priority === "Immediate" || h.priority === "Short-Term"
   ).length;
 
@@ -325,6 +415,12 @@ export default function RiskMap() {
     const target = DISTRICT_COORDINATES[scopeId] || DISTRICT_COORDINATES.national;
     setMapCenter(target.center);
     setMapZoom(target.zoom);
+    if (scopeId === "national") {
+      setFilters({});
+    } else {
+      const dName = scopeId.charAt(0).toUpperCase() + scopeId.slice(1);
+      setFilters({ district: dName });
+    }
     window.dispatchEvent(new Event("roleChanged"));
   };
 
@@ -423,11 +519,16 @@ export default function RiskMap() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  {districtScope ? `${districtScope} Habitations` : "Total Habitations"}
+                  {districtScope ? `${districtScope} Matching` : "Matching Settlements"}
                 </p>
-                <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                  {totalInScope}
-                </p>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-2xl font-black text-slate-900 dark:text-white">
+                    {filteredCount}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">
+                    / {totalInScope} total
+                  </span>
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
                 <MapPin className="w-5 h-5" />
@@ -511,6 +612,9 @@ export default function RiskMap() {
                 filters={filters}
                 onChange={setFilters}
                 districts={districts}
+                habitations={scopedBaseHabitations}
+                isDistrictLocked={Boolean(districtScope)}
+                onFlyToDistrict={handleFlyToDistrict}
               />
             </div>
           </div>
@@ -579,6 +683,34 @@ export default function RiskMap() {
                     <span>Clear Vector</span>
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Empty Filter Results Alert Banner */}
+            {filtered.length === 0 && (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold">No settlements match the selected GIS Matrix criteria</p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      Try clearing or loosening your filters to view habitations on the tactical map.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (districtScope) setFilters({ district: districtScope });
+                    else {
+                      setFilters({});
+                      handleFlyToDistrict("all");
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 flex-shrink-0"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Matrix Filters</span>
+                </button>
               </div>
             )}
 
