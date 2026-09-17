@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -16,182 +16,167 @@ import {
   Crosshair,
   Maximize2,
   Minimize2,
-  Info,
   Compass,
   MapPin,
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
+  Plus,
+  Minus,
+  ExternalLink,
+  Shield,
 } from "lucide-react";
 import LiveRiskInspector from "./LiveRiskInspector";
 import { getEvacuationRoute } from "../services/osrmRouting";
 
-// Custom SVG Icons (Zero external HTTP dependencies for maximum reliability)
+// =========================================================================
+// HIGH-VISIBILITY GOOGLE-STYLE SVG PINS (100% Reliable, Zero Image URLs)
+// =========================================================================
 const createHabitationIcon = (riskLevel, isSelected) => {
   const colorMap = {
-    Critical: "#ef4444",
-    High: "#f97316",
-    Moderate: "#eab308",
-    Low: "#22c55e",
+    Critical: "#d93025", // Google Red
+    High: "#ea8600",     // Google Amber
+    Moderate: "#f9ab00", // Google Yellow
+    Low: "#1e8e3e",      // Google Green
   };
-  const color = colorMap[riskLevel] || "#22c55e";
-  const size = isSelected ? 24 : 18;
+  const color = colorMap[riskLevel] || "#1e8e3e";
+  const size = isSelected ? 32 : 24;
   const isCritical = riskLevel === "Critical";
 
   return L.divIcon({
-    className: "custom-hab-marker",
+    className: "google-hab-marker",
     html: `
-      <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <div style="position: relative; width: ${size}px; height: ${size + 8}px; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
         ${
           isCritical
-            ? `<div style="position: absolute; inset: -4px; border-radius: 50%; background-color: rgba(239,68,68,0.4); animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>`
+            ? `<div style="position: absolute; top: 0; width: ${size}px; height: ${size}px; border-radius: 50%; background-color: rgba(217,48,37,0.4); animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>`
             : ""
         }
-        <div style="
-          background-color: ${color};
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 50%;
-          border: ${isSelected ? "3px solid #ffffff" : "2px solid #ffffff"};
-          box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: transform 0.2s;
-        ">
-          <div style="width: 5px; height: 5px; border-radius: 50%; background: white;"></div>
-        </div>
+        <svg viewBox="0 0 24 32" width="${size}" height="${size + 8}" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4));">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="${color}" stroke="#ffffff" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="4.5" fill="#ffffff"/>
+        </svg>
       </div>
     `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
+    iconSize: [size, size + 8],
+    iconAnchor: [size / 2, size + 8],
+    popupAnchor: [0, -(size + 8)],
   });
 };
 
 const createShelterIcon = (isSelected) => {
-  const size = isSelected ? 30 : 24;
+  const size = isSelected ? 36 : 28;
   return L.divIcon({
-    className: "custom-shelter-marker",
+    className: "google-shelter-marker",
     html: `
-      <div style="position: relative; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-        <div style="
-          background-color: #2563eb;
-          width: ${size}px;
-          height: ${size}px;
-          border-radius: 6px;
-          border: 2px solid #ffffff;
-          box-shadow: 0 3px 10px rgba(37,99,235,0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 13px;
-          line-height: 1;
-        ">
-          🏛️
-        </div>
+      <div style="position: relative; width: ${size}px; height: ${size + 8}px; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+        <svg viewBox="0 0 24 32" width="${size}" height="${size + 8}" style="filter: drop-shadow(0 3px 6px rgba(26,115,232,0.5));">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20c0-6.63-5.37-12-12-12z" fill="#1a73e8" stroke="#ffffff" stroke-width="1.8"/>
+          <circle cx="12" cy="12" r="6" fill="#ffffff"/>
+          <path d="M9 14v-3l3-2.5 3 2.5v3h-2v-2h-2v2H9z" fill="#1a73e8"/>
+        </svg>
       </div>
     `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
+    iconSize: [size, size + 8],
+    iconAnchor: [size / 2, size + 8],
+    popupAnchor: [0, -(size + 8)],
   });
 };
 
-const createUserIcon = () => {
+const createUserLocationIcon = () => {
   return L.divIcon({
-    className: "custom-user-marker",
+    className: "google-user-marker",
     html: `
-      <div style="position: relative; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;">
-        <div style="position: absolute; inset: 0; border-radius: 50%; background-color: rgba(59,130,246,0.4); animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+      <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+        <div style="position: absolute; inset: 0; border-radius: 50%; background-color: rgba(66,133,244,0.35); animation: ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>
         <div style="
-          background-color: #2563eb;
-          width: 16px;
-          height: 16px;
+          background-color: #1a73e8;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
-          border: 3px solid #ffffff;
-          box-shadow: 0 0 10px rgba(37,99,235,0.8);
+          border: 3.5px solid #ffffff;
+          box-shadow: 0 0 8px rgba(0,0,0,0.4);
         "></div>
       </div>
     `,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-    popupAnchor: [0, -13],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14],
   });
 };
 
-// Base map configurations with high-reliability CDNs
+// =========================================================================
+// GOOGLE MAPS TILE PROVIDERS (Fast, High-Res, Direct Google Infrastructure)
+// =========================================================================
 const BASE_MAPS = {
-  streets: {
-    name: "Street Map",
+  googleRoad: {
+    id: "googleRoad",
+    name: "Google Roadmap",
     icon: "🗺️",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
+    url: "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+    subdomains: ["0", "1", "2", "3"],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+    maxZoom: 20,
   },
-  satellite: {
-    name: "Satellite",
+  googleHybrid: {
+    id: "googleHybrid",
+    name: "Google Satellite",
     icon: "🛰️",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "&copy; Esri &mdash; Maxar, Earthstar Geographics",
-    maxZoom: 19,
+    url: "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    subdomains: ["0", "1", "2", "3"],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a> (Satellite Imagery)',
+    maxZoom: 20,
+  },
+  googleTerrain: {
+    id: "googleTerrain",
+    name: "Google Terrain",
+    icon: "⛰️",
+    url: "https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
+    subdomains: ["0", "1", "2", "3"],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+    maxZoom: 20,
   },
   dark: {
+    id: "dark",
     name: "Tactical Dark",
     icon: "🌙",
     url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    subdomains: ["a", "b", "c", "d"],
     attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
-  },
-  osm: {
-    name: "OpenStreetMap",
-    icon: "🌐",
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
   },
 };
 
-// Sub-component that handles auto-resize and camera motion inside MapContainer
-function MapController({ center, zoom, bounds, resizeTrigger }) {
+// =========================================================================
+// MAP CAMERA & SIZE CONTROLLER (Never resets user zoom unexpectedly)
+// =========================================================================
+function MapController({ targetView, onMapReady }) {
   const map = useMap();
+  const lastTargetViewRef = useRef(null);
 
-  // Invalidate size multiple times to eliminate grey/blank tiles completely
+  // Invalidate size on load to guarantee 0 grey tiles
   useEffect(() => {
+    if (onMapReady) onMapReady(map);
     const t1 = setTimeout(() => map.invalidateSize(), 100);
-    const t2 = setTimeout(() => map.invalidateSize(), 350);
-    const t3 = setTimeout(() => map.invalidateSize(), 800);
+    const t2 = setTimeout(() => map.invalidateSize(), 400);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
-  }, [map, resizeTrigger]);
+  }, [map, onMapReady]);
 
-  // Window resize listener
+  // Handle explicit flyTo requests only when targetView actually changes
   useEffect(() => {
-    const handleResize = () => map.invalidateSize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [map]);
+    if (!targetView || !targetView.center) return;
+    const key = `${targetView.center[0]}_${targetView.center[1]}_${targetView.zoom}`;
+    if (lastTargetViewRef.current === key) return;
+    lastTargetViewRef.current = key;
 
-  // Auto-fit bounds or fly to center
-  useEffect(() => {
-    if (bounds && bounds.isValid && bounds.isValid()) {
-      map.fitBounds(bounds, {
-        padding: [50, 50],
-        maxZoom: 12,
-        animate: true,
-        duration: 0.8,
-      });
-    } else if (center && center[0] && center[1]) {
-      map.setView(center, zoom || map.getZoom(), {
-        animate: true,
-        duration: 0.8,
-      });
-    }
-  }, [center, zoom, bounds, map]);
+    map.flyTo(targetView.center, targetView.zoom, {
+      duration: 1.1,
+      easeLinearity: 0.25,
+    });
+  }, [targetView, map]);
 
   return null;
 }
@@ -204,9 +189,9 @@ export default function MapView({
   selectedShelter = null,
   onSelectHabitation = () => {},
   onSelectShelter = () => {},
-  center = [22.5, 79.0],
+  center = [22.8, 79.5],
   zoom = 5,
-  height = "600px",
+  height = "620px",
   showSites = true,
   showHabitations = true,
   showRedZones = true,
@@ -214,12 +199,25 @@ export default function MapView({
   userLocation = null,
   onLocateMe = null,
 }) {
-  const [baseMap, setBaseMap] = useState(variant === "gov" ? "dark" : "streets");
+  // Default to Google Roadmap for Citizen, or Google Hybrid / Dark for Gov
+  const [baseMap, setBaseMap] = useState(variant === "gov" ? "googleHybrid" : "googleRoad");
   const [showLayerMenu, setShowLayerMenu] = useState(false);
-  const [indiaBoundary, setIndiaBoundary] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [indiaBoundary, setIndiaBoundary] = useState(null);
+
   const containerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  // Target view state triggered ONLY on explicit actions
+  const [targetView, setTargetView] = useState({ center, zoom });
+
+  // Update targetView when center/zoom props change from parent
+  useEffect(() => {
+    if (center && center[0] && center[1]) {
+      setTargetView({ center, zoom });
+    }
+  }, [center, zoom]);
 
   // Load India administrative boundary GeoJSON
   useEffect(() => {
@@ -238,13 +236,13 @@ export default function MapView({
   const getRiskColor = (level) => {
     switch (level) {
       case "Critical":
-        return "#dc2626";
+        return "#d93025";
       case "High":
-        return "#ea580c";
+        return "#ea8600";
       case "Moderate":
-        return "#ca8a04";
+        return "#f9ab00";
       default:
-        return "#16a34a";
+        return "#1e8e3e";
     }
   };
 
@@ -281,7 +279,7 @@ export default function MapView({
     return best;
   }, [selectedHabitation, selectedShelter, selHabCoords, relocationSites]);
 
-  // Road Routing calculation
+  // Road Routing calculation via OSRM
   const [roadRoute, setRoadRoute] = useState(null);
   useEffect(() => {
     const originCoords = selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null);
@@ -311,31 +309,20 @@ export default function MapView({
 
   const activeCorridorCoords = roadRoute?.coordinates || fallbackRoute;
 
-  // Calculate dynamic bounding box of all markers for optimal view
-  const autoBounds = useMemo(() => {
-    const points = [];
-    if (showHabitations) {
-      habitations.forEach((h) => {
-        const c = getCoords(h);
-        if (c) points.push(c);
-      });
+  // Zoom In / Zoom Out Google Controls
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomIn();
     }
-    if (showSites) {
-      relocationSites.forEach((s) => {
-        const c = getCoords(s);
-        if (c) points.push(c);
-      });
-    }
-    if (userLocation) {
-      points.push([userLocation.lat, userLocation.lng]);
-    }
-    if (points.length >= 2) {
-      return L.latLngBounds(points);
-    }
-    return null;
-  }, [habitations, relocationSites, showHabitations, showSites, userLocation]);
+  };
 
-  // Fullscreen toggle handler
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomOut();
+    }
+  };
+
+  // Fullscreen Handler
   const handleToggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!isFullscreen) {
@@ -348,10 +335,13 @@ export default function MapView({
       }
     }
     setIsFullscreen(!isFullscreen);
+    setTimeout(() => {
+      if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
+    }, 200);
   };
 
-  // Internal Geolocation handler
-  const handleTriggerLocate = () => {
+  // Geolocation Handler
+  const handleLocateMe = () => {
     if (onLocateMe) {
       onLocateMe();
       return;
@@ -365,10 +355,11 @@ export default function MapView({
       (pos) => {
         setLocating(false);
         const { latitude, longitude } = pos.coords;
+        setTargetView({ center: [latitude, longitude], zoom: 14 });
         if (onSelectHabitation) {
           onSelectHabitation({
             id: "user-gps",
-            name: "Your Current Location",
+            name: "Your Live GPS Location",
             district: "Live GPS",
             coords: [latitude, longitude],
             population: 1,
@@ -379,13 +370,28 @@ export default function MapView({
       },
       () => {
         setLocating(false);
-        alert("Unable to acquire your GPS location. Please ensure location services are enabled.");
+        alert("Unable to acquire your location. Please check browser GPS permissions.");
       },
       { timeout: 8000 }
     );
   };
 
-  const activeBaseObj = BASE_MAPS[baseMap] || BASE_MAPS.streets;
+  // Google Maps Deep Link
+  const openGoogleMapsDirections = () => {
+    const originCoords = selHabCoords || (userLocation ? [userLocation.lat, userLocation.lng] : null);
+    const destCoords = targetShelter ? getCoords(targetShelter) : null;
+    if (!destCoords) return;
+
+    let url = "";
+    if (originCoords) {
+      url = `https://www.google.com/maps/dir/?api=1&origin=${originCoords[0]},${originCoords[1]}&destination=${destCoords[0]},${destCoords[1]}&travelmode=driving`;
+    } else {
+      url = `https://www.google.com/maps/search/?api=1&query=${destCoords[0]},${destCoords[1]}`;
+    }
+    window.open(url, "_blank");
+  };
+
+  const activeBaseObj = BASE_MAPS[baseMap] || BASE_MAPS.googleRoad;
 
   return (
     <div
@@ -394,7 +400,7 @@ export default function MapView({
         height: isFullscreen ? "100vh" : height,
         width: "100%",
       }}
-      className="relative rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 shadow-md font-sans z-0 bg-slate-900"
+      className="relative rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 shadow-lg font-sans z-0 bg-slate-100 dark:bg-slate-900 select-none"
     >
       <MapContainer
         center={center}
@@ -403,55 +409,56 @@ export default function MapView({
         scrollWheelZoom={true}
         zoomControl={false}
       >
-        {/* Core Controller for sizing, recentering, and bounds fitting */}
+        {/* Core Controller for sizing & camera motions */}
         <MapController
-          center={center}
-          zoom={zoom}
-          bounds={autoBounds}
-          resizeTrigger={`${height}-${isFullscreen}-${baseMap}`}
+          targetView={targetView}
+          onMapReady={(map) => {
+            mapInstanceRef.current = map;
+          }}
         />
 
-        {/* Dynamic Base Tile Layer */}
+        {/* High-Resolution Google Maps Tile Layer */}
         <TileLayer
           key={baseMap}
           url={activeBaseObj.url}
+          subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
           attribution={activeBaseObj.attribution}
           maxZoom={activeBaseObj.maxZoom}
         />
 
-        {/* Official India Administrative Border */}
+        {/* India Sovereign Border Overlay */}
         {indiaBoundary && (
           <GeoJSON
             data={indiaBoundary}
             style={{
-              color: variant === "gov" ? "#38bdf8" : "#2563eb",
-              weight: 2,
-              opacity: 0.7,
+              color: "#1a73e8",
+              weight: 2.2,
+              opacity: 0.85,
               fillOpacity: 0,
             }}
           />
         )}
 
-        {/* Hazard Red Zones / Screening Buffers */}
+        {/* Hazard Screening Red Zones */}
         {showRedZones && redZones && (
           <GeoJSON
             data={redZones}
             style={(f) => ({
-              color: f?.properties?.risk_level === "Critical" ? "#dc2626" : "#ea580c",
+              color: f?.properties?.risk_level === "Critical" ? "#d93025" : "#ea8600",
               weight: 2,
-              fillColor: f?.properties?.risk_level === "Critical" ? "#ef4444" : "#f97316",
-              fillOpacity: 0.18,
-              dashArray: "4, 4",
+              fillColor: f?.properties?.risk_level === "Critical" ? "#ea4335" : "#fbbc04",
+              fillOpacity: 0.22,
+              dashArray: "5, 5",
             })}
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
               layer.bindPopup(`
                 <div style="font-size:12px; font-family:sans-serif; min-width:180px;">
-                  <strong style="color:#b91c1c;">⚠️ ${p.name || "Risk Screening Zone"}</strong>
-                  <div style="margin-top:4px; font-size:11px; color:#475569;">
+                  <strong style="color:#d93025; font-size:13px;">⚠️ ${p.name || "Risk Screening Area"}</strong>
+                  <div style="margin-top:5px; font-size:11px; color:#374151;">
                     Hazard: <strong>${p.hazard || "Multi-Hazard"}</strong><br/>
-                    Risk Level: <strong>${p.risk_level || "Critical"}</strong><br/>
-                    Buffer: <em>${p.classification || "Official Screening"}</em>
+                    Risk Index: <strong>${p.risk_level || "Critical"}</strong><br/>
+                    Buffer Type: <em>${p.classification || "Official Screening"}</em>
                   </div>
                 </div>
               `);
@@ -459,32 +466,33 @@ export default function MapView({
           />
         )}
 
-        {/* Active Evacuation Road Corridor Polyline */}
+        {/* Evacuation Route Polyline in Google Blue */}
         {activeCorridorCoords && (
           <Polyline
             positions={activeCorridorCoords}
             pathOptions={{
-              color: roadRoute?.isRoadNetwork ? "#2563eb" : "#dc2626",
-              weight: roadRoute?.isRoadNetwork ? 5 : 4,
-              dashArray: roadRoute?.isRoadNetwork ? undefined : "6, 6",
+              color: "#1a73e8",
+              weight: 6,
               opacity: 0.95,
+              lineCap: "round",
+              lineJoin: "round",
             }}
           />
         )}
 
-        {/* User GPS Location Marker */}
+        {/* User GPS Pin */}
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserLocationIcon()}>
             <Popup>
               <div className="p-1 text-xs">
-                <p className="font-bold text-blue-700">📍 You Are Here</p>
-                <p className="text-[11px] text-slate-500">Live GPS Coordinates</p>
+                <p className="font-bold text-blue-600">📍 You Are Here</p>
+                <p className="text-[10px] text-slate-500">Live GPS Location</p>
               </div>
             </Popup>
           </Marker>
         )}
 
-        {/* Habitations / Settlements Markers */}
+        {/* Habitation Markers */}
         {showHabitations &&
           habitations.map((hab) => {
             const coords = getCoords(hab);
@@ -502,18 +510,19 @@ export default function MapView({
                   click: (e) => {
                     L.DomEvent.stopPropagation(e);
                     onSelectHabitation(isSelected ? null : { ...hab, coords });
+                    setTargetView({ center: coords, zoom: 14 });
                   },
                 }}
               >
                 <Popup>
-                  <div className="text-xs p-1 min-w-[210px] font-sans">
+                  <div className="text-xs p-1 min-w-[220px] font-sans">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="font-bold text-slate-900 text-sm">{hab.name}</span>
+                      <span className="font-bold text-slate-900 text-sm leading-tight">{hab.name}</span>
                       <span
-                        className="px-2 py-0.5 rounded text-[10px] font-black text-white"
+                        className="px-2 py-0.5 rounded text-[10px] font-black text-white flex-shrink-0"
                         style={{ backgroundColor: getRiskColor(riskLevel) }}
                       >
-                        {riskLevel} Risk
+                        {riskLevel}
                       </span>
                     </div>
 
@@ -521,25 +530,19 @@ export default function MapView({
                       📍 {hab.district} District
                     </p>
 
-                    <div className="space-y-1 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
+                    <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
                       <div className="flex justify-between">
-                        <span>Hazard Exposure:</span>
-                        <strong className="text-red-600 dark:text-red-400">{hab.hazard}</strong>
+                        <span>Active Hazard:</span>
+                        <strong className="text-red-600 dark:text-red-400 font-bold">{hab.hazard}</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>Resident Population:</span>
-                        <strong>{hab.population ? hab.population.toLocaleString() : "N/A"}</strong>
+                        <span>Population at Risk:</span>
+                        <strong className="font-bold">{hab.population ? hab.population.toLocaleString() : "N/A"}</strong>
                       </div>
                       {hab.riskScore !== undefined && (
                         <div className="flex justify-between">
-                          <span>Risk Index:</span>
+                          <span>Vulnerability Index:</span>
                           <strong>{Number(hab.riskScore).toFixed(1)} / 100</strong>
-                        </div>
-                      )}
-                      {hab.priority && (
-                        <div className="flex justify-between">
-                          <span>Relocation Priority:</span>
-                          <strong className="text-blue-600 dark:text-blue-400">{hab.priority}</strong>
                         </div>
                       )}
                     </div>
@@ -551,14 +554,14 @@ export default function MapView({
                         e.preventDefault();
                         onSelectHabitation(isSelected ? null : { ...hab, coords });
                       }}
-                      className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition shadow flex items-center justify-center gap-1.5 ${
+                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5 ${
                         isSelected
                           ? "bg-rose-600 hover:bg-rose-700 text-white"
                           : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>{isSelected ? "Clear Evacuation Route" : "Show Safe Evacuation Route"}</span>
+                      <span>{isSelected ? "Clear Evacuation Route" : "Show Safe Route to Shelter"}</span>
                     </button>
                   </div>
                 </Popup>
@@ -566,7 +569,7 @@ export default function MapView({
             );
           })}
 
-        {/* Designated Safe Shelters / Relief Camps */}
+        {/* Designated Safe Shelters */}
         {showSites &&
           relocationSites.map((site) => {
             const coords = getCoords(site);
@@ -583,24 +586,25 @@ export default function MapView({
                   click: (e) => {
                     L.DomEvent.stopPropagation(e);
                     onSelectShelter({ ...site, coords });
+                    setTargetView({ center: coords, zoom: 14 });
                   },
                 }}
               >
                 <Popup>
-                  <div className="text-xs p-1 min-w-[210px] font-sans">
-                    <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded w-fit">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      <span>OFFICIAL SAFE SHELTER</span>
+                  <div className="text-xs p-1 min-w-[230px] font-sans">
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/70 px-2 py-0.5 rounded-md w-fit">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>GOVERNMENT SAFE SHELTER</span>
                     </div>
 
-                    <h4 className="font-bold text-slate-900 text-sm mt-1">{site.name}</h4>
-                    <p className="text-slate-500 text-[11px] mb-2">{site.district} District</p>
+                    <h4 className="font-bold text-slate-900 text-sm mt-1 leading-snug">{site.name}</h4>
+                    <p className="text-slate-500 text-[11px] mb-2 font-medium">📍 {site.district} District</p>
 
-                    <div className="space-y-1 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
+                    <div className="space-y-1.5 bg-blue-50/60 dark:bg-slate-800 p-2.5 rounded-xl border border-blue-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
                       <div className="flex justify-between">
-                        <span>Available Spaces:</span>
-                        <strong className="text-emerald-600 dark:text-emerald-400">
-                          {site.available ? site.available.toLocaleString() : "Open"}
+                        <span>Available Space:</span>
+                        <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          {site.available ? site.available.toLocaleString() : "Open"} Beds
                         </strong>
                       </div>
                       <div className="flex justify-between">
@@ -608,23 +612,39 @@ export default function MapView({
                         <strong>{site.capacity ? site.capacity.toLocaleString() : "N/A"}</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>Road Accessibility:</span>
+                        <span>Road Connectivity:</span>
                         <strong>{site.accessibility || "Good"}</strong>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        onSelectShelter({ ...site, coords });
-                      }}
-                      className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition shadow flex items-center justify-center gap-1.5"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>Direct Route to this Shelter</span>
-                    </button>
+                    <div className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onSelectShelter({ ...site, coords });
+                        }}
+                        className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow flex items-center justify-center gap-1.5"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        <span>Show Directions on Map</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`;
+                          window.open(url, "_blank");
+                        }}
+                        className="w-full py-1.5 px-3 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition flex items-center justify-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Navigate in Google Maps App</span>
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -632,39 +652,59 @@ export default function MapView({
           })}
       </MapContainer>
 
-      {/* FLOATING MAP CONTROLS OVERLAY */}
-      {/* 1. Top Right Controls (Layer Switcher + GPS + Fullscreen) */}
-      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
-        {/* Locate Me Button */}
-        <button
-          onClick={handleTriggerLocate}
-          disabled={locating}
-          className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 transition active:scale-95 flex items-center gap-1 text-xs font-bold"
-          title="Locate my GPS coordinates"
-        >
-          {locating ? (
-            <RefreshCw className="w-4 h-4 text-blue-600 animate-spin" />
-          ) : (
-            <Crosshair className="w-4 h-4 text-blue-600" />
-          )}
-          <span className="hidden sm:inline">My Location</span>
-        </button>
+      {/* ===================================================================== */}
+      {/* GOOGLE MAPS STYLE FLOATING CONTROLS                                  */}
+      {/* ===================================================================== */}
 
-        {/* Base Layer Switcher Button */}
+      {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Route is active) */}
+      {roadRoute && targetShelter && (
+        <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow flex-shrink-0 mt-0.5">
+              <Navigation className="w-4 h-4 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-slate-900 dark:text-white truncate">
+                  {targetShelter.name}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex-shrink-0">
+                  {roadRoute.isRoadNetwork ? "Road Route" : "Direct Vector"}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
+                <span>🛣️ <strong>{roadRoute.distanceKm} km</strong></span>
+                <span>⏱️ <strong>~{roadRoute.durationMinutes} mins drive</strong></span>
+              </div>
+              <button
+                onClick={openGoogleMapsDirections}
+                className="mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <span>Open in Google Maps for Turn-by-Turn GPS</span>
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. BOTTOM-LEFT GOOGLE MAPS BASE LAYER TOGGLE */}
+      <div className="absolute bottom-4 left-4 z-[1000]">
         <div className="relative">
           <button
             onClick={() => setShowLayerMenu(!showLayerMenu)}
-            className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 text-xs font-bold"
-            title="Change Map View"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-50 transition active:scale-95"
+            title="Switch Map Layers"
           >
-            <Layers className="w-4 h-4 text-amber-500" />
-            <span className="hidden md:inline">{activeBaseObj.name}</span>
+            <span className="text-base">{activeBaseObj.icon}</span>
+            <span>{activeBaseObj.name}</span>
+            <Layers className="w-3.5 h-3.5 text-blue-600" />
           </button>
 
           {showLayerMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-              <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Base Map Layer
+            <div className="absolute bottom-12 left-0 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Google Maps Views
               </p>
               {Object.entries(BASE_MAPS).map(([key, item]) => (
                 <button
@@ -673,9 +713,9 @@ export default function MapView({
                     setBaseMap(key);
                     setShowLayerMenu(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
                     baseMap === key
-                      ? "bg-blue-600 text-white"
+                      ? "bg-blue-600 text-white font-bold"
                       : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -689,44 +729,58 @@ export default function MapView({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Fullscreen Button */}
+      {/* 3. BOTTOM-RIGHT GOOGLE-STYLE CONTROLS (Zoom +, Zoom -, Locate Me, Fullscreen) */}
+      <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-center gap-2">
+        {/* GPS Locate Me */}
+        <button
+          onClick={handleLocateMe}
+          disabled={locating}
+          className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 transition active:scale-90"
+          title="Locate Me (GPS)"
+        >
+          {locating ? (
+            <RefreshCw className="w-4 h-4 text-blue-600 animate-spin" />
+          ) : (
+            <Crosshair className="w-4 h-4 text-blue-600" />
+          )}
+        </button>
+
+        {/* Zoom Controls */}
+        <div className="flex flex-col rounded-xl overflow-hidden shadow-xl border border-slate-300 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md divide-y divide-slate-200 dark:divide-slate-700">
+          <button
+            onClick={handleZoomIn}
+            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition active:scale-95"
+            title="Zoom In"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleZoomOut}
+            className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition active:scale-95"
+            title="Zoom Out"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Fullscreen Toggle */}
         <button
           onClick={handleToggleFullscreen}
-          className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-          title={isFullscreen ? "Exit Fullscreen" : "View Fullscreen"}
+          className="p-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition active:scale-90"
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         >
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* 2. Top Left Evacuation Telemetry HUD */}
-      {roadRoute && targetShelter && (
-        <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-blue-600 text-white shadow flex-shrink-0 mt-0.5">
-              <Navigation className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-slate-900 dark:text-white">Active Evacuation Corridor</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                  {roadRoute.isRoadNetwork ? "Real Road Route" : "Direct Vector"}
-                </span>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 mt-1 font-medium">
-                Destination: <strong className="text-blue-600 dark:text-blue-400">{targetShelter.name}</strong>
-              </p>
-              <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
-                <span>🛣️ Distance: <strong className="text-slate-900 dark:text-white">{roadRoute.distanceKm} km</strong></span>
-                <span>⏱️ Est. Time: <strong className="text-slate-900 dark:text-white">~{roadRoute.durationMinutes} mins</strong></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 4. Google Maps Watermark badge in corner */}
+      <div className="absolute bottom-1 right-24 z-[999] pointer-events-none opacity-80 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+        Google Maps Infrastructure
+      </div>
 
-      {/* 3. Government Tactical Inspector Drawer */}
+      {/* 5. Government Tactical Inspector Drawer (only in gov view) */}
       {variant === "gov" && selectedHabitation && (
         <LiveRiskInspector
           habitation={selectedHabitation}

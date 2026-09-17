@@ -43,6 +43,13 @@ const DEFAULT_SHELTERS = [
   { id: 107, name: "Dynamic Relief Shelter 7 (Chamarajanagar)", district: "Chamarajanagar", coords: [11.862, 76.6388], capacity: 1400, available: 700, occupancy: 700, accessibility: "Good", distance: 1.9, status: "Active" },
 ];
 
+const DISTRICT_COORDINATES = {
+  national: { center: [22.8, 79.5], zoom: 5 },
+  chamoli: { center: [30.4034, 79.324], zoom: 11 },
+  darbhanga: { center: [26.1554, 85.8918], zoom: 11 },
+  wayanad: { center: [11.6854, 76.132], zoom: 11 },
+};
+
 export default function RiskMap() {
   const [habitations, setHabitations] = useState([]);
   const [baselineHabitations, setBaselineHabitations] = useState([]);
@@ -54,9 +61,22 @@ export default function RiskMap() {
     return localStorage.getItem("dss_user_role") || "national";
   });
 
+  const [mapCenter, setMapCenter] = useState(() => {
+    const role = localStorage.getItem("dss_user_role") || "national";
+    return DISTRICT_COORDINATES[role]?.center || [22.8, 79.5];
+  });
+  const [mapZoom, setMapZoom] = useState(() => {
+    const role = localStorage.getItem("dss_user_role") || "national";
+    return DISTRICT_COORDINATES[role]?.zoom || 5;
+  });
+
   useEffect(() => {
     const handleRoleUpdate = () => {
-      setActiveRole(localStorage.getItem("dss_user_role") || "national");
+      const role = localStorage.getItem("dss_user_role") || "national";
+      setActiveRole(role);
+      const target = DISTRICT_COORDINATES[role] || DISTRICT_COORDINATES.national;
+      setMapCenter(target.center);
+      setMapZoom(target.zoom);
     };
     window.addEventListener("roleChanged", handleRoleUpdate);
     window.addEventListener("storage", handleRoleUpdate);
@@ -281,25 +301,30 @@ export default function RiskMap() {
       setSelectedHab(null);
     } else {
       setSelectedHab(hab);
+      if (hab.coords) {
+        setMapCenter(hab.coords);
+        setMapZoom(14);
+      }
     }
   };
 
-  // Map camera centering
-  const mapCenter = useMemo(() => {
-    if (selectedHab?.coords) return selectedHab.coords;
-    if (districtScope && filtered.length > 0) return filtered[0].coords;
-    return [22.5, 79.0];
-  }, [selectedHab, districtScope, filtered]);
-
-  const mapZoom = useMemo(() => {
-    if (selectedHab) return 11;
-    if (districtScope) return 9;
-    return 5;
-  }, [selectedHab, districtScope]);
+  const handleSelectShelter = (site) => {
+    setSelectedShelter(site);
+    if (site.coords) {
+      setMapCenter(site.coords);
+      setMapZoom(14);
+    }
+  };
 
   // Quick Scope selection helper for testing/officers
   const handleQuickScope = (scopeId) => {
     localStorage.setItem("dss_user_role", scopeId);
+    setActiveRole(scopeId);
+    setSelectedHab(null);
+    setSelectedShelter(null);
+    const target = DISTRICT_COORDINATES[scopeId] || DISTRICT_COORDINATES.national;
+    setMapCenter(target.center);
+    setMapZoom(target.zoom);
     window.dispatchEvent(new Event("roleChanged"));
   };
 
@@ -524,7 +549,7 @@ export default function RiskMap() {
                 selectedHabitation={selectedHab}
                 selectedShelter={selectedShelter}
                 onSelectHabitation={handleToggleHabitation}
-                onSelectShelter={setSelectedShelter}
+                onSelectShelter={handleSelectShelter}
                 center={mapCenter}
                 zoom={mapZoom}
                 showSites

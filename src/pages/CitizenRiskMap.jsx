@@ -18,10 +18,23 @@ import {
   X,
   ExternalLink,
   RefreshCw,
+  Compass,
 } from "lucide-react";
 import MapView from "@/components/MapView";
 import MapLegend from "@/components/MapLegend";
 import { useLanguage } from "@/context/LanguageContext";
+
+// Exact District Center Coordinates across India
+const DISTRICT_COORDINATES = {
+  all: { center: [22.8, 79.5], zoom: 5 },
+  Chamoli: { center: [30.4034, 79.324], zoom: 11 },
+  Darbhanga: { center: [26.1554, 85.8918], zoom: 11 },
+  Wayanad: { center: [11.6854, 76.132], zoom: 11 },
+  Varanasi: { center: [25.3176, 82.9739], zoom: 11 },
+  Dibrugarh: { center: [26.1445, 91.7362], zoom: 11 },
+  Mayurbhanj: { center: [21.9397, 86.3264], zoom: 11 },
+  Chamarajanagar: { center: [11.854, 76.6288], zoom: 11 },
+};
 
 // Demo fallback data if backend is warming up
 const FALLBACK_HABITATIONS = [
@@ -62,6 +75,10 @@ export default function CitizenRiskMap() {
   const [selectedShelter, setSelectedShelter] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+
+  // Camera coordinates controlled explicitly
+  const [mapCenter, setMapCenter] = useState([22.8, 79.5]);
+  const [mapZoom, setMapZoom] = useState(5);
 
   // Fetch GIS Data from Backend
   async function loadData() {
@@ -148,6 +165,17 @@ export default function CitizenRiskMap() {
     return Array.from(list).sort();
   }, [habitations, shelters]);
 
+  // Handle District Pill click (flies to district coordinates)
+  const handleDistrictChange = (d) => {
+    setSelectedDistrict(d);
+    setSelectedHabitation(null);
+    setSelectedShelter(null);
+
+    const target = DISTRICT_COORDINATES[d] || DISTRICT_COORDINATES.all;
+    setMapCenter(target.center);
+    setMapZoom(target.zoom);
+  };
+
   // Filtered Habitations
   const filteredHabitations = useMemo(() => {
     return habitations.filter((h) => {
@@ -179,6 +207,15 @@ export default function CitizenRiskMap() {
     });
   }, [shelters, selectedDistrict, facilityFilter, searchQuery]);
 
+  // Handle Shelter Card Click
+  const handleSelectShelter = (site) => {
+    setSelectedShelter(site);
+    if (site.coords) {
+      setMapCenter(site.coords);
+      setMapZoom(14);
+    }
+  };
+
   // User Geolocation Trigger
   const handleLocateCitizen = () => {
     if (!navigator.geolocation) {
@@ -191,8 +228,10 @@ export default function CitizenRiskMap() {
         setIsLocating(false);
         const { latitude, longitude } = pos.coords;
         setUserLocation({ lat: latitude, lng: longitude });
+        setMapCenter([latitude, longitude]);
+        setMapZoom(14);
 
-        // Auto find closest shelter
+        // Find nearest shelter
         let closest = null;
         let minD = Infinity;
         shelters.forEach((s) => {
@@ -224,21 +263,6 @@ export default function CitizenRiskMap() {
     );
   };
 
-  // Center & Zoom logic
-  const mapCenter = useMemo(() => {
-    if (selectedHabitation?.coords) return selectedHabitation.coords;
-    if (selectedShelter?.coords) return selectedShelter.coords;
-    if (userLocation) return [userLocation.lat, userLocation.lng];
-    if (filteredHabitations.length > 0) return filteredHabitations[0].coords;
-    return [22.5, 79.0];
-  }, [selectedHabitation, selectedShelter, userLocation, filteredHabitations]);
-
-  const mapZoom = useMemo(() => {
-    if (selectedHabitation || selectedShelter || userLocation) return 11;
-    if (selectedDistrict !== "all") return 10;
-    return 5;
-  }, [selectedHabitation, selectedShelter, userLocation, selectedDistrict]);
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
       {/* 1. CITIZEN FAST EMERGENCY TICKER */}
@@ -247,7 +271,7 @@ export default function CitizenRiskMap() {
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 rounded-full bg-white animate-ping" />
             <span className="font-bold tracking-wide">
-              Emergency Direct Fast Dial • 24x7 Active Helpdesk
+              Emergency Fast Dial • 24x7 Active Citizen Helpline
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -275,18 +299,18 @@ export default function CitizenRiskMap() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* 2. PAGE HERO & GUIDANCE */}
+        {/* 2. PAGE HERO & GOOGLE MAPS POWERED INTRO */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wider mb-1">
               <ShieldCheck className="w-4 h-4" />
-              <span>Verified Public Safety Map</span>
+              <span>Google Maps Verified Public Safety Portal</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Citizen Disaster Risk & Safe Shelter Map
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
-              Locate vetted government relief camps, check neighborhood flood/landslide risk levels, and inspect live evacuation routes with walking/driving directions.
+              Locate government-vetted cyclone shelters, inspect neighborhood hazard alerts, and navigate safe evacuation corridors via Google Maps.
             </p>
           </div>
 
@@ -301,33 +325,34 @@ export default function CitizenRiskMap() {
               ) : (
                 <Crosshair className="w-4 h-4" />
               )}
-              <span>Find Shelters Near Me (GPS)</span>
+              <span>Find Closest Shelter (GPS)</span>
             </button>
           </div>
         </div>
 
         {/* 3. DISTRICT JUMP PILLS */}
         <div className="mb-6 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2">
-            Select District:
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1">
+            <Compass className="w-3.5 h-3.5 text-blue-600" />
+            <span>Select Jurisdiction:</span>
           </span>
           <button
-            onClick={() => setSelectedDistrict("all")}
+            onClick={() => handleDistrictChange("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
               selectedDistrict === "all"
-                ? "bg-blue-600 text-white shadow"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
             }`}
           >
-            All India ({habitations.length} Areas)
+            🇮🇳 All-India Focus
           </button>
           {districtList.map((d) => (
             <button
               key={d}
-              onClick={() => setSelectedDistrict(d)}
+              onClick={() => handleDistrictChange(d)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                 selectedDistrict === d
-                  ? "bg-blue-600 text-white shadow"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                   : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
               }`}
             >
@@ -345,7 +370,7 @@ export default function CitizenRiskMap() {
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                  Active Evacuation Corridor
+                  Designated Evacuation Corridor
                 </p>
                 <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                   Route to: <span className="text-blue-600 dark:text-blue-400">{selectedShelter?.name || "Nearest Designated Shelter"}</span>
@@ -359,6 +384,17 @@ export default function CitizenRiskMap() {
             </div>
 
             <div className="flex items-center gap-2 self-end sm:self-center">
+              {selectedShelter && selectedShelter.coords && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${selectedShelter.coords[0]},${selectedShelter.coords[1]}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition shadow"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Turn-by-Turn GPS Navigation</span>
+                </a>
+              )}
               <button
                 onClick={() => {
                   setSelectedHabitation(null);
@@ -367,7 +403,7 @@ export default function CitizenRiskMap() {
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>Clear Route</span>
+                <span>Clear</span>
               </button>
             </div>
           </div>
@@ -384,7 +420,7 @@ export default function CitizenRiskMap() {
                   <span>Relief Camps ({filteredShelters.length})</span>
                 </h2>
                 <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
-                  Verified Active
+                  Verified Open
                 </span>
               </div>
 
@@ -458,10 +494,10 @@ export default function CitizenRiskMap() {
                     return (
                       <div
                         key={site.id}
-                        onClick={() => setSelectedShelter(site)}
-                        className={`p-3.5 rounded-xl border text-xs transition cursor-pointer ${
+                        onClick={() => handleSelectShelter(site)}
+                        className={`p-3.5 rounded-2xl border text-xs transition cursor-pointer ${
                           isSelected
-                            ? "bg-blue-50/80 dark:bg-blue-950/70 border-blue-500 shadow-md ring-1 ring-blue-500"
+                            ? "bg-blue-50/90 dark:bg-blue-950/80 border-blue-500 shadow-md ring-1 ring-blue-500"
                             : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700"
                         }`}
                       >
@@ -474,7 +510,7 @@ export default function CitizenRiskMap() {
                               📍 {site.district} District
                             </p>
                           </div>
-                          <span className="flex-shrink-0 px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300">
+                          <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300">
                             {site.available} Spaces
                           </span>
                         </div>
@@ -482,8 +518,8 @@ export default function CitizenRiskMap() {
                         {/* Capacity Progress Bar */}
                         <div className="mt-2 space-y-1">
                           <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                            <span>Open Space: {availPct}%</span>
-                            <span>Total Cap: {site.capacity}</span>
+                            <span>Available: {availPct}%</span>
+                            <span>Total Intake: {site.capacity}</span>
                           </div>
                           <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                             <div
@@ -506,18 +542,30 @@ export default function CitizenRiskMap() {
                           </span>
                         </div>
 
-                        {/* Direct Action Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedShelter(site);
-                          }}
-                          className="w-full mt-3 py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
-                        >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>Show Evacuation Route</span>
-                        </button>
+                        {/* Direct Action Buttons */}
+                        <div className="mt-3 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectShelter(site);
+                            }}
+                            className="flex-1 py-1.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>Plot Route</span>
+                          </button>
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${site.coords[0]},${site.coords[1]}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            title="Open Turn-by-Turn GPS in Google Maps"
+                          >
+                            <ExternalLink className="w-4 h-4 text-blue-600" />
+                          </a>
+                        </div>
                       </div>
                     );
                   })
@@ -525,30 +573,30 @@ export default function CitizenRiskMap() {
               </div>
             </div>
 
-            {/* Emergency Advice Card */}
+            {/* Emergency SOP Card */}
             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs">
               <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200 mb-1">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Immediate Citizen Advice</span>
+                <span>Citizen Evacuation SOP</span>
               </div>
               <p className="text-amber-800 dark:text-amber-300 leading-relaxed text-[11px]">
-                If your area is in a <strong>Red or Orange risk zone</strong>, follow local district administration announcements. Do not cross swollen river crossings. Proceed to the nearest safe shelter listed above immediately.
+                If your area is under <strong>Critical / Red Zone</strong> alert, immediately follow the designated route above to the nearest safe shelter. Keep your mobile phone charged and carry family IDs in a waterproof pouch.
               </p>
             </div>
           </div>
 
-          {/* Right Panel: Interactive Map Canvas (8 cols on lg) */}
+          {/* Right Panel: Interactive Google Maps Canvas (8 cols on lg) */}
           <div className="lg:col-span-8 space-y-3">
-            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
-                  Active View:
+                  Current View:
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold">
-                  {selectedDistrict === "all" ? "All India Focus" : `${selectedDistrict} District`}
+                <span className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold">
+                  {selectedDistrict === "all" ? "All-India View" : `${selectedDistrict} District`}
                 </span>
                 <span className="text-slate-400">•</span>
-                <span className="text-slate-500">
+                <span className="text-slate-500 font-medium">
                   {filteredHabitations.length} Habitats · {filteredShelters.length} Shelters
                 </span>
               </div>
@@ -556,7 +604,7 @@ export default function CitizenRiskMap() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={loadData}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                   title="Reload GIS Data"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -565,8 +613,8 @@ export default function CitizenRiskMap() {
               </div>
             </div>
 
-            {/* The Bug-Free Leaflet Map Canvas */}
-            <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-800">
+            {/* Google Maps Powered Canvas */}
+            <div className="rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800">
               <MapView
                 habitations={filteredHabitations}
                 relocationSites={filteredShelters}
