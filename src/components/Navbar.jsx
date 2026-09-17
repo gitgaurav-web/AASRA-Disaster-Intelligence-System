@@ -4,36 +4,38 @@ import {
   Bell, Menu, X, ChevronDown, Home, Info, Waves, Map, Users, Gauge,
   Move, BarChart3, BookOpen, LogIn, Shield, Building, Check, LogOut,
   Lock, Radio, AlertTriangle, CheckCircle2, Clock, Sun, Moon,
-  ShieldAlert, PhoneCall, ExternalLink, ArrowRight, User, ShieldCheck
+  ShieldAlert, PhoneCall, ExternalLink, ArrowRight, User, ShieldCheck,
+  Globe
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { NOTIFICATIONS } from '@/data/demoData';
 import { initTheme } from '../theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 // ==========================================
 // GOVERNMENT PORTAL: EXACT 11 NAV LINKS
 // ==========================================
 const GOV_NAV_LINKS = [
-  { to: '/gov', altTo: '/', label: 'Home', icon: Home },
-  { to: '/gov/about', altTo: '/about', label: 'About', icon: Info },
-  { to: '/gov/disasters', altTo: '/disasters', label: 'Disaster Information', icon: Waves },
-  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', label: 'Live Alerts', icon: Bell },
-  { to: '/gov/risk-map', altTo: '/risk-map', label: 'Risk Map', icon: Map },
-  { to: '/gov/habitations', altTo: '/habitations', label: 'Habitations', icon: Users },
-  { to: '/gov/capacity', altTo: '/capacity', label: 'Capacity', icon: Gauge },
-  { to: '/gov/relocation', altTo: '/relocation', label: 'Relocation', icon: Move },
-  { to: '/gov/rescue-teams', altTo: '/rescue-teams', label: 'Rescue Teams', icon: ShieldAlert },
-  { to: '/gov/analytics', altTo: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/gov/resources', altTo: '/resources', label: 'Resources', icon: BookOpen },
+  { to: '/gov', altTo: '/', labelKey: 'gov_home', fallback: 'Home', icon: Home },
+  { to: '/gov/about', altTo: '/about', labelKey: 'gov_about', fallback: 'About', icon: Info },
+  { to: '/gov/disasters', altTo: '/disasters', labelKey: 'gov_disasters', fallback: 'Disaster Information', icon: Waves },
+  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', labelKey: 'gov_alerts', fallback: 'Live Alerts', icon: Bell },
+  { to: '/gov/risk-map', altTo: '/risk-map', labelKey: 'gov_risk_map', fallback: 'Risk Map', icon: Map },
+  { to: '/gov/habitations', altTo: '/habitations', labelKey: 'gov_habitations', fallback: 'Habitations', icon: Users },
+  { to: '/gov/capacity', altTo: '/capacity', labelKey: 'gov_capacity', fallback: 'Capacity', icon: Gauge },
+  { to: '/gov/relocation', altTo: '/relocation', labelKey: 'gov_relocation', fallback: 'Relocation', icon: Move },
+  { to: '/gov/rescue-teams', altTo: '/rescue-teams', labelKey: 'gov_rescue_teams', fallback: 'Rescue Teams', icon: ShieldAlert },
+  { to: '/gov/analytics', altTo: '/analytics', labelKey: 'gov_analytics', fallback: 'Analytics', icon: BarChart3 },
+  { to: '/gov/resources', altTo: '/resources', labelKey: 'gov_resources', fallback: 'Resources', icon: BookOpen },
 ];
 
 // ==========================================
 // CITIZEN PORTAL: EXACT USER NAV LINKS
 // ==========================================
 const CITIZEN_NAV_LINKS = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/community-reports', label: 'Community Reports', icon: Radio },
-  { to: '/risk-map', label: 'Risk Map', icon: Map },
+  { to: '/', labelKey: 'nav_home', fallback: 'Home', icon: Home },
+  { to: '/community-reports', labelKey: 'nav_community_reports', fallback: 'Community Reports', icon: Radio },
+  { to: '/risk-map', labelKey: 'nav_risk_map', fallback: 'Risk Map', icon: Map },
 ];
 
 const ROLES = [
@@ -89,6 +91,8 @@ function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { language, toggleLanguage, t } = useLanguage();
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
@@ -113,7 +117,6 @@ export default function Navbar() {
       setPortalMode('gov');
       localStorage.setItem('diastra_portal_mode', 'gov');
     } else if (location.pathname === '/' || location.pathname === '/community-reports' || location.pathname === '/citizen-login') {
-      // If user navigated directly to citizen root
       setPortalMode('citizen');
       localStorage.setItem('diastra_portal_mode', 'citizen');
     }
@@ -272,12 +275,10 @@ export default function Navbar() {
                 🏛️
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-bold tracking-tight text-white">भारत सरकार</span>
+                <span className="font-bold tracking-tight text-white">{t('gov_portal_title')}</span>
                 <span className="text-slate-500">|</span>
-                <span className="text-slate-300 font-medium">Government of India</span>
-                <span className="hidden md:inline text-slate-500">•</span>
-                <span className="hidden md:inline text-amber-300/90 font-semibold">
-                  राष्ट्रीय आपदा प्रबंधन प्राधिकरण (NDMA)
+                <span className="text-amber-300/90 font-semibold">
+                  {t('ndma_title')}
                 </span>
               </div>
             </div>
@@ -285,15 +286,25 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                RESTRICTED OFFICIAL ACCESS • NIC VERIFIED
+                {t('restricted_badge')}
               </span>
+
+              {/* Language Switcher for Government */}
+              <button
+                onClick={toggleLanguage}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 text-[11px] font-bold transition"
+                title="Change Language / भाषा बदलें"
+              >
+                <Globe className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language === 'en' ? 'हिन्दी' : 'English'}</span>
+              </button>
 
               {/* Portal Switcher: Go back to Citizen Portal */}
               <button
                 onClick={switchToCitizen}
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-600/90 hover:bg-blue-600 text-white text-[11px] font-bold transition shadow-sm"
               >
-                <span>🌐 Public Citizen Portal</span>
+                <span>🌐 {t('switch_to_citizen')}</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
@@ -329,6 +340,7 @@ export default function Navbar() {
               <div className="hidden xl:flex items-center gap-0.5 flex-1 justify-center px-4 overflow-x-auto">
                 {GOV_NAV_LINKS.map((link) => {
                   const active = isLinkActive(link.to, link.altTo);
+                  const label = t(link.labelKey) || link.fallback;
                   return (
                     <Link
                       key={link.to}
@@ -339,7 +351,7 @@ export default function Navbar() {
                           : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                       }`}
                     >
-                      {link.label}
+                      {label}
                     </Link>
                   );
                 })}
@@ -485,7 +497,7 @@ export default function Navbar() {
                           className="w-full mt-1.5 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
                         >
                           <LogOut className="w-3.5 h-3.5" />
-                          Sign Out Officer Session
+                          {t('gov_sign_out')}
                         </button>
                       </div>
                     )}
@@ -496,7 +508,7 @@ export default function Navbar() {
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-sm"
                   >
                     <LogIn className="w-3.5 h-3.5" />
-                    <span>Officer Login</span>
+                    <span>{t('gov_officer_login')}</span>
                   </Link>
                 )}
 
@@ -520,7 +532,7 @@ export default function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white"
                   >
-                    {link.label}
+                    {t(link.labelKey) || link.fallback}
                   </Link>
                 ))}
               </div>
@@ -542,13 +554,13 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="font-semibold text-slate-300 text-[11px]">
-              आपदा नागरिक सुरक्षा एवं सहायता पोर्टल • 24x7 Citizen Safety Network
+              {t('citizen_portal_sub')}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
             <a href="tel:112" className="flex items-center gap-1 text-[11px] font-bold text-amber-400 hover:underline">
-              <PhoneCall className="w-3 h-3" /> Dial 112 (National SOS)
+              <PhoneCall className="w-3 h-3" /> {t('sos_call')}
             </a>
             <span className="text-slate-600">|</span>
             {/* Direct Switch to Government Command Portal */}
@@ -557,7 +569,7 @@ export default function Navbar() {
               className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 text-[11px] font-bold transition"
             >
               <Shield className="w-3 h-3 text-amber-400" />
-              <span>Official Government Portal</span>
+              <span>{t('switch_to_gov')}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -579,7 +591,7 @@ export default function Navbar() {
                   DIASTRA
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block leading-tight mt-0.5">
-                  Citizen Safety & Early Warning
+                  {t('citizen_portal_title')}
                 </span>
               </div>
             </Link>
@@ -589,6 +601,7 @@ export default function Navbar() {
               {CITIZEN_NAV_LINKS.map((link) => {
                 const active = location.pathname === link.to;
                 const Icon = link.icon;
+                const label = t(link.labelKey) || link.fallback;
                 return (
                   <Link
                     key={link.to}
@@ -600,14 +613,24 @@ export default function Navbar() {
                     }`}
                   >
                     <Icon className="w-4 h-4" />
-                    <span>{link.label}</span>
+                    <span>{label}</span>
                   </Link>
                 );
               })}
             </div>
 
-            {/* Right Actions: Theme Toggle & Citizen Login */}
-            <div className="flex items-center gap-3">
+            {/* Right Actions: Language Switcher, Theme Toggle & Citizen Login */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Language Switcher */}
+              <button
+                onClick={toggleLanguage}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 transition active:scale-95 shadow-sm"
+                title="Switch Language / भाषा बदलें"
+              >
+                <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>{language === 'en' ? 'हिन्दी' : 'English'}</span>
+              </button>
+
               {/* Theme toggle */}
               <button
                 onClick={handleToggleTheme}
@@ -629,7 +652,7 @@ export default function Navbar() {
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <span className="hidden sm:inline">{citizenUser.name.split(' ')[0]}</span>
-                  <span className="sm:hidden">Profile</span>
+                  <span className="sm:hidden">{t('nav_profile')}</span>
                 </Link>
               ) : (
                 <Link
@@ -637,7 +660,7 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition"
                 >
                   <User className="w-3.5 h-3.5" />
-                  <span>Citizen Login</span>
+                  <span>{t('nav_citizen_login')}</span>
                 </Link>
               )}
 
@@ -662,7 +685,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <link.icon className="w-4 h-4" />
-                  <span>{link.label}</span>
+                  <span>{t(link.labelKey) || link.fallback}</span>
                 </Link>
               ))}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -673,7 +696,7 @@ export default function Navbar() {
                   }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 text-xs font-bold"
                 >
-                  <span>Enter Government Command Portal</span>
+                  <span>{t('switch_to_gov')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

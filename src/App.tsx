@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { DemoBanner } from '@/components/Layout';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 // Citizen Portal Pages
 import CitizenHome from '@/pages/CitizenHome';
@@ -38,11 +39,12 @@ function ScrollToTop() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <ScrollToTop />
-      <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-        <DemoBanner />
-        <Navbar />
+    <LanguageProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+          <DemoBanner />
+          <Navbar />
         <main className="flex-1">
           <Routes>
             {/* ==========================================
@@ -96,6 +98,7 @@ function App() {
         <Footer />
       </div>
     </BrowserRouter>
+  </LanguageProvider>
   );
 }
 

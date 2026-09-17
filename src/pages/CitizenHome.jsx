@@ -80,7 +80,10 @@ const DOS_DONTS = {
   }
 };
 
+import { useLanguage } from '@/context/LanguageContext';
+
 export default function CitizenHome() {
+  const { language, t } = useLanguage();
   const [checkedKit, setCheckedKit] = useState(() => {
     const saved = localStorage.getItem('diastra_kit_checked');
     return saved ? JSON.parse(saved) : ['water', 'torch', 'powerbank'];
@@ -146,18 +149,18 @@ export default function CitizenHome() {
             <div className="max-w-2xl space-y-5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold uppercase tracking-wider">
                 <Shield className="w-3.5 h-3.5 text-blue-400" />
-                <span>Government Certified Citizen Safety Portal</span>
+                <span>{t('citizen_hero_tag')}</span>
               </div>
               
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-                आपदा में आपकी सुरक्षा, <br />
+                {t('citizen_hero_h1_1')} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-sky-300 to-emerald-300">
-                  हर पल, हर कदम आपके साथ।
+                  {t('citizen_hero_h1_2')}
                 </span>
               </h1>
               
               <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-                DIASTRA Citizen Safety Network connects you with immediate rescue assistance, nearest verified relief shelters, and live official weather warnings in your local district.
+                {t('citizen_hero_desc')}
               </p>
 
               {/* Action Buttons */}
@@ -167,14 +170,14 @@ export default function CitizenHome() {
                   className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/30 flex items-center gap-2 transition active:scale-95"
                 >
                   <AlertTriangle className="w-4 h-4 animate-bounce" />
-                  <span>Report Hazard / SOS</span>
+                  <span>{t('btn_report_sos')}</span>
                 </Link>
                 <Link
                   to="/risk-map"
                   className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition active:scale-95"
                 >
                   <MapPin className="w-4 h-4" />
-                  <span>Find Safe Shelters Near Me</span>
+                  <span>{t('btn_find_shelter')}</span>
                 </Link>
                 {citizenUser ? (
                   <div className="px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 flex items-center gap-2">
@@ -246,10 +249,10 @@ export default function CitizenHome() {
         <section>
           <div className="mb-4">
             <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-              Citizen Protection Services
+              {t('services_title')}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Immediate tools for residents, families, and neighborhood volunteers
+              {t('services_sub')}
             </p>
           </div>
 
@@ -261,17 +264,17 @@ export default function CitizenHome() {
                   <Radio className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  Community Hazard Report
+                  {t('card1_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Notice rising river levels, landslides, road blocks, or trapped families? Submit an alert with GPS coordinates and photos for district verification.
+                  {t('card1_desc')}
                 </p>
               </div>
               <Link
                 to="/community-reports"
                 className="mt-5 w-full py-2.5 px-4 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-between transition"
               >
-                <span>Submit Incident Report</span>
+                <span>{t('card1_btn')}</span>
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
