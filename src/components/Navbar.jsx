@@ -18,17 +18,17 @@ import { useLanguage } from '@/context/LanguageContext';
 // GOVERNMENT PORTAL: EXACT 11 NAV LINKS
 // ==========================================
 const GOV_NAV_LINKS = [
-  { to: '/gov', altTo: '/', labelKey: 'gov_home', fallback: 'Home', hi: 'होम', icon: Home },
-  { to: '/gov/about', altTo: '/about', labelKey: 'gov_about', fallback: 'About', hi: 'परिचय', icon: Info },
-  { to: '/gov/disasters', altTo: '/disasters', labelKey: 'gov_disasters', fallback: 'Disaster Intel', hi: 'आपदा सूचना', icon: Waves },
-  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', labelKey: 'gov_alerts', fallback: 'Live Alerts', hi: 'चेतावनियां', icon: Bell },
-  { to: '/gov/risk-map', altTo: '/risk-map', labelKey: 'gov_risk_map', fallback: 'Risk Map', hi: 'मानचित्र', icon: Map },
-  { to: '/gov/habitations', altTo: '/habitations', labelKey: 'gov_habitations', fallback: 'Habitations', hi: 'बस्तियां', icon: Users },
-  { to: '/gov/capacity', altTo: '/capacity', labelKey: 'gov_capacity', fallback: 'Capacity', hi: 'क्षमता', icon: Gauge },
-  { to: '/gov/relocation', altTo: '/relocation', labelKey: 'gov_relocation', fallback: 'Relocation', hi: 'पुनर्वास', icon: Move },
-  { to: '/gov/rescue-teams', altTo: '/rescue-teams', labelKey: 'gov_rescue_teams', fallback: 'Rescue Teams', hi: 'बचाव दल', icon: ShieldAlert },
-  { to: '/gov/analytics', altTo: '/analytics', labelKey: 'gov_analytics', fallback: 'Analytics', hi: 'विश्लेषण', icon: BarChart3 },
-  { to: '/gov/resources', altTo: '/resources', labelKey: 'gov_resources', fallback: 'Resources', hi: 'संसाधन', icon: BookOpen },
+  { to: '/gov', altTo: '/', labelKey: 'gov_home', fallback: 'Home', icon: Home },
+  { to: '/gov/about', altTo: '/about', labelKey: 'gov_about', fallback: 'About', icon: Info },
+  { to: '/gov/disasters', altTo: '/disasters', labelKey: 'gov_disasters', fallback: 'Disaster Intel', icon: Waves },
+  { to: '/gov/emergency-alerts', altTo: '/emergency-alerts', labelKey: 'gov_alerts', fallback: 'Live Alerts', icon: Bell },
+  { to: '/gov/risk-map', altTo: '/risk-map', labelKey: 'gov_risk_map', fallback: 'Risk Map', icon: Map },
+  { to: '/gov/habitations', altTo: '/habitations', labelKey: 'gov_habitations', fallback: 'Habitations', icon: Users },
+  { to: '/gov/capacity', altTo: '/capacity', labelKey: 'gov_capacity', fallback: 'Capacity', icon: Gauge },
+  { to: '/gov/relocation', altTo: '/relocation', labelKey: 'gov_relocation', fallback: 'Relocation', icon: Move },
+  { to: '/gov/rescue-teams', altTo: '/rescue-teams', labelKey: 'gov_rescue_teams', fallback: 'Rescue Teams', icon: ShieldAlert },
+  { to: '/gov/analytics', altTo: '/analytics', labelKey: 'gov_analytics', fallback: 'Analytics', icon: BarChart3 },
+  { to: '/gov/resources', altTo: '/resources', labelKey: 'gov_resources', fallback: 'Resources', icon: BookOpen },
 ];
 
 // ==========================================
@@ -284,21 +284,17 @@ export default function Navbar() {
               <NationalEmblem className="w-8 h-10" variant="gold" />
               <div className="border-l border-slate-700/90 pl-3.5 space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="font-serif font-black text-xs tracking-wider text-amber-300">
-                    भारत सरकार
+                  <span className="font-serif font-black text-xs tracking-wider text-amber-300 uppercase">
+                    {t('gov_portal_title')}
                   </span>
-                  <span className="text-slate-500">|</span>
+                  <span className="text-slate-500">•</span>
                   <span className="font-serif text-[11px] tracking-wide text-slate-200">
-                    GOVERNMENT OF INDIA
+                    {t('mha_title')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-100">
-                    गृह मंत्रालय
-                  </span>
-                  <span className="text-slate-500 text-[10px]">•</span>
-                  <span className="text-[11px] font-semibold text-amber-200">
-                    राष्ट्रीय आपदा प्रबंधन प्राधिकरण (NDMA)
+                    {t('ndma_title')}
                   </span>
                 </div>
               </div>
@@ -362,7 +358,7 @@ export default function Navbar() {
               </Link>
 
               {/* Exact 11 Government Command Modules */}
-              <div className="hidden xl:flex items-center gap-0.5 flex-1 justify-center px-4 overflow-x-auto">
+              <div className="hidden xl:flex items-center gap-1 flex-1 justify-center px-4 overflow-x-auto">
                 {GOV_NAV_LINKS.map((link) => {
                   const active = isLinkActive(link.to, link.altTo);
                   const label = t(link.labelKey) || link.fallback;
@@ -370,16 +366,13 @@ export default function Navbar() {
                     <Link
                       key={link.to}
                       to={link.to}
-                      className={`px-2.5 py-1.5 rounded-lg transition whitespace-nowrap text-center ${
+                      className={`px-3 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                         active
-                          ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30 border border-blue-400/40'
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 border border-blue-400/40'
                           : 'text-slate-200 hover:bg-slate-800/80 hover:text-white'
                       }`}
                     >
-                      <span className="block text-xs leading-none">{label}</span>
-                      <span className="block text-[9px] text-slate-300/80 leading-none mt-0.5 font-normal">
-                        {link.hi}
-                      </span>
+                      <span>{label}</span>
                     </Link>
                   );
                 })}
