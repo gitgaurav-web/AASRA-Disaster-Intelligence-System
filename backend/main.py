@@ -400,7 +400,47 @@ def get_dynamic_users_db():
             "role": "national",
             "badge": "National Command",
             "district": None,
-        }
+        },
+        "ndma.hq@gov.in": {
+            "password": "Password@123",
+            "name": "Command Duty Officer, NDMA HQ",
+            "designation": "National Operations Center",
+            "role": "national",
+            "badge": "National Command",
+            "district": None,
+        },
+        "dm.chamoli@uk.gov.in": {
+            "password": "Password@123",
+            "name": "Himanshu Khurana, IAS",
+            "designation": "District Magistrate, Chamoli",
+            "role": "chamoli",
+            "badge": "District Magistrate",
+            "district": "Chamoli",
+        },
+        "dm.chamoli@gov.in": {
+            "password": "Password@123",
+            "name": "District Magistrate, Chamoli",
+            "designation": "District Magistrate, Chamoli",
+            "role": "chamoli",
+            "badge": "District Magistrate",
+            "district": "Chamoli",
+        },
+        "dm.wayanad@kerala.gov.in": {
+            "password": "Password@123",
+            "name": "District Collector, Wayanad",
+            "designation": "District Collector & DM, Wayanad",
+            "role": "wayanad",
+            "badge": "District Collector",
+            "district": "Wayanad",
+        },
+        "secy.sdma@bihar.gov.in": {
+            "password": "Password@123",
+            "name": "Principal Secretary, Bihar SDMA",
+            "designation": "State Disaster Management Authority",
+            "role": "patna",
+            "badge": "SDMA Command",
+            "district": "Patna",
+        },
     }
     habs = get_all_active_habitations()
     for h in habs:
@@ -428,6 +468,14 @@ def login(creds: LoginRequest):
     email_clean = creds.email.strip().lower()
     users_db = get_dynamic_users_db()
     user = users_db.get(email_clean)
+
+    # Resilient prefix matching for district accounts (e.g. dm.chamoli@*)
+    if not user:
+        prefix = email_clean.split("@")[0]
+        for k, v in users_db.items():
+            if k.split("@")[0] == prefix:
+                user = v
+                break
 
     if not user or user["password"] != creds.password:
         raise HTTPException(

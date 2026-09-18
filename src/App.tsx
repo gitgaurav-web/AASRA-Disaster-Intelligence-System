@@ -29,6 +29,7 @@ import Settings from '@/pages/Settings';
 import CommunityReports from '@/pages/CommunityReports';
 import RescueTeams from '@/pages/RescueTeams';
 import EmergencyAlerts from '@/pages/EmergencyAlerts';
+import GovAuthGuard from '@/components/GovAuthGuard';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -59,41 +60,41 @@ function App() {
             {/* ==========================================
                 2. GOVERNMENT COMMAND PORTAL (/gov prefix)
                 ========================================== */}
-            <Route path="/gov" element={<Home />} />
-            <Route path="/gov/about" element={<About />} />
-            <Route path="/gov/disasters" element={<DisasterInformation />} />
-            <Route path="/gov/emergency-alerts" element={<EmergencyAlerts />} />
-            <Route path="/gov/risk-map" element={<RiskMap />} />
-            <Route path="/gov/habitations" element={<Habitations />} />
-            <Route path="/gov/habitations/:id" element={<HabitationDetails />} />
-            <Route path="/gov/capacity" element={<Capacity />} />
-            <Route path="/gov/relocation" element={<Relocation />} />
-            <Route path="/gov/relocation-sites" element={<RelocationSites />} />
-            <Route path="/gov/rescue-teams" element={<RescueTeams />} />
-            <Route path="/gov/analytics" element={<Analytics />} />
-            <Route path="/gov/resources" element={<Resources />} />
             <Route path="/gov/login" element={<Login />} />
-            <Route path="/gov/admin" element={<Admin />} />
-            <Route path="/gov/settings" element={<Settings />} />
+            <Route path="/gov" element={<GovAuthGuard><Home /></GovAuthGuard>} />
+            <Route path="/gov/about" element={<GovAuthGuard><About /></GovAuthGuard>} />
+            <Route path="/gov/disasters" element={<GovAuthGuard><DisasterInformation /></GovAuthGuard>} />
+            <Route path="/gov/emergency-alerts" element={<GovAuthGuard><EmergencyAlerts /></GovAuthGuard>} />
+            <Route path="/gov/risk-map" element={<GovAuthGuard><RiskMap /></GovAuthGuard>} />
+            <Route path="/gov/habitations" element={<GovAuthGuard><Habitations /></GovAuthGuard>} />
+            <Route path="/gov/habitations/:id" element={<GovAuthGuard><HabitationDetails /></GovAuthGuard>} />
+            <Route path="/gov/capacity" element={<GovAuthGuard><Capacity /></GovAuthGuard>} />
+            <Route path="/gov/relocation" element={<GovAuthGuard><Relocation /></GovAuthGuard>} />
+            <Route path="/gov/relocation-sites" element={<GovAuthGuard><RelocationSites /></GovAuthGuard>} />
+            <Route path="/gov/rescue-teams" element={<GovAuthGuard><RescueTeams /></GovAuthGuard>} />
+            <Route path="/gov/analytics" element={<GovAuthGuard><Analytics /></GovAuthGuard>} />
+            <Route path="/gov/resources" element={<GovAuthGuard><Resources /></GovAuthGuard>} />
+            <Route path="/gov/admin" element={<GovAuthGuard><Admin /></GovAuthGuard>} />
+            <Route path="/gov/settings" element={<GovAuthGuard><Settings /></GovAuthGuard>} />
 
             {/* ==========================================
                 3. DIRECT / LEGACY COMPATIBILITY ROUTES
                 ========================================== */}
-            <Route path="/about" element={<About />} />
-            <Route path="/disasters" element={<DisasterInformation />} />
-            <Route path="/emergency-alerts" element={<EmergencyAlerts />} />
-            <Route path="/habitations" element={<Habitations />} />
-            <Route path="/habitations/:id" element={<HabitationDetails />} />
-            <Route path="/capacity" element={<Capacity />} />
-            <Route path="/relocation" element={<Relocation />} />
-            <Route path="/relocation-sites" element={<RelocationSites />} />
-            <Route path="/rescue-teams" element={<RescueTeams />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/disasters" element={<GovAuthGuard><DisasterInformation /></GovAuthGuard>} />
+            <Route path="/emergency-alerts" element={<GovAuthGuard><EmergencyAlerts /></GovAuthGuard>} />
+            <Route path="/habitations" element={<GovAuthGuard><Habitations /></GovAuthGuard>} />
+            <Route path="/habitations/:id" element={<GovAuthGuard><HabitationDetails /></GovAuthGuard>} />
+            <Route path="/capacity" element={<GovAuthGuard><Capacity /></GovAuthGuard>} />
+            <Route path="/relocation" element={<GovAuthGuard><Relocation /></GovAuthGuard>} />
+            <Route path="/relocation-sites" element={<GovAuthGuard><RelocationSites /></GovAuthGuard>} />
+            <Route path="/rescue-teams" element={<GovAuthGuard><RescueTeams /></GovAuthGuard>} />
+            <Route path="/analytics" element={<GovAuthGuard><Analytics /></GovAuthGuard>} />
+            <Route path="/resources" element={<GovAuthGuard><Resources /></GovAuthGuard>} />
+            <Route path="/admin" element={<GovAuthGuard><Admin /></GovAuthGuard>} />
+            <Route path="/settings" element={<GovAuthGuard><Settings /></GovAuthGuard>} />
           </Routes>
         </main>
         <Footer />
