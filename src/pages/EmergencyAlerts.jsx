@@ -106,7 +106,7 @@ export default function EmergencyAlerts() {
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
   const [firebaseConfig, setFirebaseConfig] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('diastra_firebase_config') || '{}');
+      return JSON.parse(localStorage.getItem('aasra_firebase_config') || localStorage.getItem('diastra_firebase_config') || '{}');
     } catch {
       return {};
     }
@@ -267,7 +267,7 @@ export default function EmergencyAlerts() {
 
   const saveFirebaseConfig = (e) => {
     e.preventDefault();
-    localStorage.setItem('diastra_firebase_config', JSON.stringify(firebaseConfig));
+    localStorage.setItem('aasra_firebase_config', JSON.stringify(firebaseConfig));
     setShowFirebaseModal(false);
     alert('Firebase FCM configuration saved successfully!');
   };

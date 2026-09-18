@@ -123,22 +123,22 @@ export default function Navbar() {
 
   const [portalMode, setPortalMode] = useState(() => {
     if (isGovPath) return 'gov';
-    return localStorage.getItem('diastra_portal_mode') || 'citizen';
+    return localStorage.getItem('aasra_portal_mode') || localStorage.getItem('diastra_portal_mode') || 'citizen';
   });
 
   useEffect(() => {
     if (isGovPath) {
       setPortalMode('gov');
-      localStorage.setItem('diastra_portal_mode', 'gov');
+      localStorage.setItem('aasra_portal_mode', 'gov');
     } else if (location.pathname === '/' || location.pathname === '/community-reports' || location.pathname === '/citizen-login') {
       setPortalMode('citizen');
-      localStorage.setItem('diastra_portal_mode', 'citizen');
+      localStorage.setItem('aasra_portal_mode', 'citizen');
     }
   }, [location.pathname, isGovPath]);
 
   const switchToCitizen = () => {
     setPortalMode('citizen');
-    localStorage.setItem('diastra_portal_mode', 'citizen');
+    localStorage.setItem('aasra_portal_mode', 'citizen');
     navigate('/');
   };
 
@@ -336,13 +336,13 @@ export default function Navbar() {
               
               {/* Government Command Brand Designation */}
               <Link to="/gov" className="flex items-center gap-2.5 flex-shrink-0 group">
-                <div className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-white shadow-inner">
-                  <Logo className="w-5 h-5" variant="light" />
+                <div className="w-9 h-9 rounded-lg bg-blue-600/20 border border-blue-400/30 flex items-center justify-center text-white shadow-inner p-1">
+                  <Logo className="w-7 h-7" variant="light" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-black tracking-wider text-white font-mono uppercase">
-                      DIASTRA DSS
+                      AASRA DSS
                     </span>
                     <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-mono font-bold tracking-tight">
                       OFFICIAL
@@ -616,12 +616,12 @@ export default function Navbar() {
             
             {/* Citizen Portal Logo */}
             <Link to="/" className="flex items-center gap-3 flex-shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/20">
-                <Logo className="w-6 h-6" variant="light" />
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 flex items-center justify-center p-1 shadow-sm">
+                <Logo className="w-8 h-8" variant="light" />
               </div>
               <div>
                 <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none block">
-                  DIASTRA
+                  AASRA
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block leading-tight mt-0.5">
                   {t('citizen_portal_title')}

@@ -85,7 +85,7 @@ const DOS_DONTS = {
 export default function CitizenHome() {
   const { language, t } = useLanguage();
   const [checkedKit, setCheckedKit] = useState(() => {
-    const saved = localStorage.getItem('diastra_kit_checked');
+    const saved = localStorage.getItem('aasra_kit_checked') || localStorage.getItem('diastra_kit_checked');
     return saved ? JSON.parse(saved) : ['water', 'torch', 'powerbank'];
   });
   const [activeTab, setActiveTab] = useState('Flood');
@@ -123,7 +123,7 @@ export default function CitizenHome() {
   const toggleKitItem = (id) => {
     setCheckedKit(prev => {
       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      localStorage.setItem('diastra_kit_checked', JSON.stringify(next));
+      localStorage.setItem('aasra_kit_checked', JSON.stringify(next));
       return next;
     });
   };

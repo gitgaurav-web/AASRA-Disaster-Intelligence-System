@@ -1,16 +1,16 @@
 @echo off
-title DIASTRA Multi-Hazard Decision Support System Launcher
+title AASRA Multi-Hazard Decision Support System Launcher
 cls
 echo =========================================================================
-echo           DIASTRA - DISASTER INTELLIGENCE & DECISION SUPPORT
+echo           AASRA - DISASTER INTELLIGENCE & DECISION SUPPORT
 echo         Government Command Portal  ^&  Citizen Safety Network
 echo =========================================================================
 echo.
 echo [1/2] Launching FastAPI Backend (Port 8000)...
-start "DIASTRA FastAPI Backend" cmd /k "cd backend && .venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000"
+start "AASRA FastAPI Backend" cmd /k "cd backend && .venv\Scripts\python.exe -m uvicorn main:app --reload --port 8000"
 
 echo [2/2] Launching React / Vite Frontend (Port 5173)...
-start "DIASTRA React Frontend" cmd /k "npm run dev"
+start "AASRA React Frontend" cmd /k "npm run dev"
 
 echo.
 echo -------------------------------------------------------------------------

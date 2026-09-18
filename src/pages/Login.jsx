@@ -47,7 +47,7 @@ export default function Login() {
       // Store real authenticated session payload
       localStorage.setItem('dss_auth_user', JSON.stringify(data.user));
       localStorage.setItem('dss_user_role', data.user.role);
-      localStorage.setItem('diastra_portal_mode', 'gov');
+      localStorage.setItem('aasra_portal_mode', 'gov');
 
       // Trigger global state updates across Navbar and other pages
       window.dispatchEvent(new Event('authChanged'));

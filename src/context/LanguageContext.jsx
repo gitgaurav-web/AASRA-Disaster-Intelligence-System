@@ -56,7 +56,7 @@ export const TRANSLATIONS = {
     citizen_hero_tag: 'Government Certified Citizen Safety Portal',
     citizen_hero_h1_1: 'Your Safety in Disasters,',
     citizen_hero_h1_2: 'Every Second, Every Step With You.',
-    citizen_hero_desc: 'DIASTRA Citizen Safety Network connects you with immediate rescue assistance, nearest verified relief shelters, and live official weather warnings in your local district.',
+    citizen_hero_desc: 'Aasra Citizen Safety Network connects you with immediate rescue assistance, nearest verified relief shelters, and live official weather warnings in your local district.',
     btn_report_sos: 'Report Hazard / SOS',
     btn_find_shelter: 'Find Safe Shelters Near Me',
     emergency_dial_title: 'Emergency Fast Dial',
@@ -118,7 +118,7 @@ export const TRANSLATIONS = {
     citizen_hero_tag: 'सरकारी प्रमाणित नागरिक सुरक्षा पोर्टल',
     citizen_hero_h1_1: 'आपदा में आपकी सुरक्षा,',
     citizen_hero_h1_2: 'हर पल, हर कदम आपके साथ।',
-    citizen_hero_desc: 'DIASTRA नागरिक सुरक्षा नेटवर्क आपको त्वरित बचाव सहायता, नजदीकी सत्यापित राहत आश्रयों और आपके जिले में आधिकारिक मौसम चेतावनियों से जोड़ता है।',
+    citizen_hero_desc: 'Aasra (आसरा) नागरिक सुरक्षा नेटवर्क आपको त्वरित बचाव सहायता, नजदीकी सत्यापित राहत आश्रयों और आपके जिले में आधिकारिक मौसम चेतावनियों से जोड़ता है।',
     btn_report_sos: 'आपदा रिपोर्ट / आपातकालीन SOS',
     btn_find_shelter: 'नजदीकी सुरक्षित आश्रय खोजें',
     emergency_dial_title: 'आपातकालीन त्वरित डायल',
@@ -504,12 +504,12 @@ const LanguageContext = createContext({
 
 export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(() => {
-    return localStorage.getItem('diastra_language') || 'en';
+    return localStorage.getItem('aasra_language') || localStorage.getItem('diastra_language') || 'en';
   });
 
   const setLanguage = (langCode) => {
     setLanguageState(langCode);
-    localStorage.setItem('diastra_language', langCode);
+    localStorage.setItem('aasra_language', langCode);
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: langCode }));
   };
 

@@ -189,7 +189,14 @@ def fetch_live_multi_hazard_incidents():
 # In-memory storage for dynamically registered entries during live demo
 CUSTOM_REGISTERED_HABITATIONS = []
 CUSTOM_REGISTERED_SITES = []
-COMMUNITY_DB_PATH = BACKEND_DIR / "diastra_demo.db"
+_OLD_DB = BACKEND_DIR / "diastra_demo.db"
+COMMUNITY_DB_PATH = BACKEND_DIR / "aasra_community.db"
+if _OLD_DB.exists() and not COMMUNITY_DB_PATH.exists():
+    try:
+        import shutil
+        shutil.copy2(_OLD_DB, COMMUNITY_DB_PATH)
+    except Exception:
+        pass
 
 
 def _community_connection():
@@ -754,7 +761,7 @@ def get_gis_red_zones():
                 if h.get("risk_level") in ("Critical", "High")]
     return {
         "type": "FeatureCollection", "features": features,
-        "metadata": {"source": "DIASTRA prototype risk screening", "official_boundary": False},
+        "metadata": {"source": "AASRA prototype risk screening", "official_boundary": False},
     }
 
 # ==========================================

@@ -5,10 +5,10 @@
 
 // Generate or retrieve persistent local device token
 export function getOrCreateDeviceToken() {
-  let token = localStorage.getItem('diastra_device_token');
+  let token = localStorage.getItem('aasra_device_token') || localStorage.getItem('diastra_device_token');
   if (!token) {
     token = 'fcm_token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-    localStorage.setItem('diastra_device_token', token);
+    localStorage.setItem('aasra_device_token', token);
   }
   return token;
 }
@@ -135,9 +135,9 @@ export function displayDesktopNotification(title, options = {}) {
   try {
     const notif = new Notification(title, {
       body: options.body || options.message || '',
-      icon: '/logo.svg',
-      badge: '/logo.svg',
-      tag: options.tag || 'diastra-alert-' + Date.now(),
+      icon: '/aasra-logo.png',
+      badge: '/favicon.png',
+      tag: options.tag || 'aasra-alert-' + Date.now(),
       requireInteraction: severity === 'Critical',
       ...options,
     });

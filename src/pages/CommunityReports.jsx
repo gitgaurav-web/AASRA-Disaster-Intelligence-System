@@ -77,7 +77,7 @@ export default function CommunityReports() {
     try {
       await request(`/community-reports/${id}/review`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ verification_status, officer_notes: "Reviewed through DIASTRA demo dashboard." }),
+        body: JSON.stringify({ verification_status, officer_notes: "Reviewed through AASRA Command dashboard." }),
       });
       setMessage(`Report marked as ${verification_status}.`);
       load();

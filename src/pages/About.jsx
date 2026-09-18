@@ -24,13 +24,13 @@ export default function About() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8">
-        <PageHeader title="About" subtitle="NDMA Sentinel-DSS — GIS-enabled disaster risk decision support" icon={Info} />
+        <PageHeader title="About" subtitle="AASRA DSS — GIS-enabled disaster risk intelligence & decision support" icon={Info} />
 
         {/* Introduction */}
         <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mb-6 transition-colors">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-3">Introduction</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-            NDMA Sentinel-DSS is a GIS-enabled disaster risk decision-support platform designed to identify
+            AASRA DSS is a GIS-enabled disaster risk decision-support platform designed to identify
             hazard-prone red zones, analyze vulnerable habitations, assess carrying capacity, and prioritize
             immediate relocation needs. The platform integrates hazard analysis, vulnerability assessment,
             and capacity evaluation into a unified decision-support framework for disaster planners and
@@ -90,7 +90,7 @@ export default function About() {
           </div>
         </section>
 
-        <Disclaimer text="NDMA Sentinel-DSS architecture prototype. Developed for multi-hazard spatial risk simulation." />
+        <Disclaimer text="AASRA DSS architecture prototype. Developed for multi-hazard spatial risk simulation." />
       </div>
     </div>
   );

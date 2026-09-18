@@ -1,32 +1,6 @@
-# 🚨 DIASTRA — Disaster Intelligence & Multi-Hazard Decision Support System
+# 🚨 AASRA — Disaster Intelligence & Multi-Hazard Decision Support System
 
-<div align="center">
-
-![DIASTRA Banner](https://img.shields.io/badge/DIASTRA-Disaster_Intelligence_System-0284c7?style=for-the-badge&logo=shield&logoColor=white)
-![React](https://img.shields.io/badge/React_18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Python](https://img.shields.io/badge/Python_3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS_v3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Leaflet](https://img.shields.io/badge/Leaflet_GIS-199900?style=for-the-badge&logo=leaflet&logoColor=white)
-
-**An AI/GIS-powered enterprise Decision Support System (DSS) designed for National, State (SDMA), and District (DDMA) disaster response authorities to mitigate multi-hazard risks, automate shelter relocation, and dispatch omnichannel citizen alerts.**
-
-[Features](#-key-features) • [Tech Stack](#-technology-stack) • [Installation](#-quick-start--installation) • [Team](#-team-members--contributors) • [License](#-license)
-
-</div>
-
----
-
-## 📌 Executive Overview
-
-**DIASTRA** transforms raw GIS spatial layers, multi-hazard telemetry (Floods, Landslides, Cyclones, Earthquakes, Industrial Hazmat), and population density metrics into actionable life-saving intelligence. It automates:
-1. **Explainable Risk Screening** for vulnerable habitations across India.
-2. **Capacitated Relocation Matching** that flags shelter allocation deficits before deployment.
-3. **Omnichannel Citizen Warning Engine** adhering to international **OASIS Common Alerting Protocol (CAP v1.2)** standards with multilingual voice synthesis.
-4. **Real-time NDRF/SDRF Dispatch Coordination** with live GPS status and equipment telemetry.
-
----
+> **AASRA (आसरा)** is a unified AI-powered multi-hazard disaster decision support system (DSS) and citizen safety network engineered for early warning, dynamic risk scoring, shelter allocation gap analysis, automated CAP alerts, and real-time tactical dispatch.
 
 ## 🌟 Key Features
 

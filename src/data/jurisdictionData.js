@@ -1,5 +1,5 @@
 // =========================================================================
-// DIASTRA INDIA JURISDICTION HIERARCHY (States & Districts Mapping)
+// AASRA INDIA JURISDICTION HIERARCHY (States & Districts Mapping)
 // =========================================================================
 
 export const STATE_DISTRICT_MAP = {
