@@ -10,7 +10,15 @@ import {
   Zap,
   Lock,
   X,
+  Building2,
+  Crosshair,
 } from "lucide-react";
+import {
+  ALL_STATES,
+  STATE_DISTRICT_MAP,
+  getStateForDistrict,
+  getDistrictsForState,
+} from "@/data/jurisdictionData";
 
 export default function FilterPanel({
   filters = {},
@@ -19,50 +27,19 @@ export default function FilterPanel({
   habitations = [],
   isDistrictLocked = false,
   onFlyToDistrict = () => {},
+  onFlyToState = () => {},
+  onSelectSettlement = () => {},
 }) {
-  const handleChange = (key, value) => {
-    onChange((prev) => {
-      const next = { ...prev };
-      if (!value || value === "all") {
-        delete next[key];
-      } else {
-        next[key] = value;
-      }
-      return next;
-    });
-
-    if (key === "district" && onFlyToDistrict) {
-      onFlyToDistrict(value);
-    }
-  };
-
-  const handleClear = () => {
-    // Preserve locked district scope if role is active
-    if (isDistrictLocked && filters.district) {
-      onChange({ district: filters.district });
-    } else {
-      onChange({});
-      if (onFlyToDistrict) {
-        onFlyToDistrict("all");
-      }
-    }
-  };
-
-  const handleRemoveFilter = (key) => {
-    if (key === "district" && isDistrictLocked) return;
-    onChange((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    if (key === "district" && onFlyToDistrict) {
-      onFlyToDistrict("all");
-    }
-  };
+  // Determine if state is locked based on role-locked district
+  const lockedState = useMemo(() => {
+    if (!isDistrictLocked || !filters.district) return null;
+    return getStateForDistrict(filters.district);
+  }, [isDistrictLocked, filters.district]);
 
   // Compute live counts from habitations for each filter attribute
   const stats = useMemo(() => {
     const counts = {
+      states: {},
       districts: {},
       hazards: {},
       riskLevels: {},
@@ -72,6 +49,10 @@ export default function FilterPanel({
     };
 
     habitations.forEach((h) => {
+      const st = h.state || getStateForDistrict(h.district);
+      if (st) {
+        counts.states[st] = (counts.states[st] || 0) + 1;
+      }
       if (h.district) {
         counts.districts[h.district] = (counts.districts[h.district] || 0) + 1;
       }
@@ -97,12 +78,203 @@ export default function FilterPanel({
     return counts;
   }, [habitations]);
 
-  // List of active filters excluding "all" and undefined
+  // Available states list
+  const availableStates = useMemo(() => {
+    const set = new Set(ALL_STATES);
+    habitations.forEach((h) => {
+      const st = h.state || getStateForDistrict(h.district);
+      if (st) set.add(st);
+    });
+    return Array.from(set).sort();
+  }, [habitations]);
+
+  // Cascading districts: Only show districts belonging to the selected state
+  const visibleDistricts = useMemo(() => {
+    if (filters.state && filters.state !== "all") {
+      const stateDistricts = getDistrictsForState(filters.state);
+      const matched = districts.filter((d) =>
+        stateDistricts.some((sd) => sd.toLowerCase() === d.toLowerCase())
+      );
+      if (matched.length > 0) return matched;
+      return stateDistricts;
+    }
+    return districts;
+  }, [filters.state, districts]);
+
+  // Settlements matching the current state/district scope for quick picking
+  const settlementsInScope = useMemo(() => {
+    return habitations.filter((h) => {
+      if (filters.state && filters.state !== "all") {
+        const hState = h.state || getStateForDistrict(h.district);
+        if (hState?.toLowerCase() !== filters.state.toLowerCase()) return false;
+      }
+      if (filters.district && filters.district !== "all") {
+        if (h.district?.toLowerCase() !== filters.district.toLowerCase()) return false;
+      }
+      return true;
+    });
+  }, [habitations, filters.state, filters.district]);
+
+  // Generic filter change
+  const handleChange = (key, value) => {
+    onChange((prev) => {
+      const next = { ...prev };
+      if (!value || value === "all") {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+  };
+
+  // State Change Handler (Cascades to District)
+  const handleStateChange = (selectedState) => {
+    const nextState = !selectedState || selectedState === "all" ? undefined : selectedState;
+
+    onChange((prev) => {
+      const next = { ...prev };
+      if (!nextState) {
+        delete next.state;
+      } else {
+        next.state = nextState;
+        // If current district does not belong to new state, reset district
+        if (next.district && next.district !== "all") {
+          const stateDistricts = getDistrictsForState(nextState);
+          const belongs = stateDistricts.some(
+            (d) => d.toLowerCase() === next.district.toLowerCase()
+          );
+          if (!belongs) {
+            delete next.district;
+          }
+        }
+      }
+      delete next.settlementId;
+      return next;
+    });
+
+    if (onFlyToState) {
+      onFlyToState(selectedState);
+    }
+  };
+
+  // District Change Handler
+  const handleDistrictChange = (selectedDistrict) => {
+    const nextDistrict = !selectedDistrict || selectedDistrict === "all" ? undefined : selectedDistrict;
+
+    onChange((prev) => {
+      const next = { ...prev };
+      if (!nextDistrict) {
+        delete next.district;
+      } else {
+        next.district = nextDistrict;
+        // Auto-set state if not yet set
+        const parentState = getStateForDistrict(nextDistrict);
+        if (parentState && (!next.state || next.state === "all")) {
+          next.state = parentState;
+        }
+      }
+      delete next.settlementId;
+      return next;
+    });
+
+    if (onFlyToDistrict) {
+      onFlyToDistrict(selectedDistrict);
+    }
+  };
+
+  // Direct Settlement Quick Picker Handler
+  const handleSettlementChange = (settlementId) => {
+    if (!settlementId || settlementId === "all") {
+      onChange((prev) => {
+        const next = { ...prev };
+        delete next.settlementId;
+        return next;
+      });
+      if (onSelectSettlement) {
+        onSelectSettlement(null);
+      }
+      return;
+    }
+
+    const chosenHab = habitations.find((h) => String(h.id) === String(settlementId));
+    if (chosenHab) {
+      onChange((prev) => {
+        const next = { ...prev, settlementId: chosenHab.id };
+        if (chosenHab.district) {
+          next.district = chosenHab.district;
+        }
+        const st = chosenHab.state || getStateForDistrict(chosenHab.district);
+        if (st) {
+          next.state = st;
+        }
+        return next;
+      });
+
+      if (onSelectSettlement) {
+        onSelectSettlement(chosenHab);
+      }
+    }
+  };
+
+  // Clear / Reset All Filters
+  const handleClear = () => {
+    if (isDistrictLocked && filters.district) {
+      const st = getStateForDistrict(filters.district);
+      onChange({
+        district: filters.district,
+        ...(st ? { state: st } : {}),
+      });
+    } else {
+      onChange({});
+      if (onFlyToDistrict) {
+        onFlyToDistrict("all");
+      }
+    }
+    if (onSelectSettlement) {
+      onSelectSettlement(null);
+    }
+  };
+
+  // Remove Individual Filter Chip
+  const handleRemoveFilter = (key) => {
+    if (key === "district" && isDistrictLocked) return;
+    if (key === "state" && isDistrictLocked) return;
+
+    onChange((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+    if (key === "district" && onFlyToDistrict) {
+      if (filters.state && filters.state !== "all") {
+        onFlyToState(filters.state);
+      } else {
+        onFlyToDistrict("all");
+      }
+    }
+    if (key === "state" && onFlyToState) {
+      onFlyToState("all");
+    }
+    if (key === "settlementId" && onSelectSettlement) {
+      onSelectSettlement(null);
+    }
+  };
+
+  // List of active filters
   const activeFilters = useMemo(() => {
     const list = [];
     if (filters.search) list.push({ key: "search", label: `Search: "${filters.search}"` });
+    if (filters.state && filters.state !== "all" && !isDistrictLocked) {
+      list.push({ key: "state", label: `State: ${filters.state}` });
+    }
     if (filters.district && filters.district !== "all" && !isDistrictLocked) {
       list.push({ key: "district", label: `District: ${filters.district}` });
+    }
+    if (filters.settlementId && filters.settlementId !== "all") {
+      const h = habitations.find((item) => String(item.id) === String(filters.settlementId));
+      list.push({ key: "settlementId", label: `Settlement: ${h?.name || filters.settlementId}` });
     }
     if (filters.hazard && filters.hazard !== "all") {
       list.push({ key: "hazard", label: `Hazard: ${filters.hazard}` });
@@ -120,21 +292,21 @@ export default function FilterPanel({
       list.push({ key: "priority", label: `Priority: ${filters.priority}` });
     }
     return list;
-  }, [filters, isDistrictLocked]);
+  }, [filters, isDistrictLocked, habitations]);
 
   return (
-    <div className="space-y-3.5 text-xs">
-      {/* 1. Instant Text Search */}
+    <div className="space-y-3.5 text-xs text-slate-900 dark:text-slate-100">
+      {/* 1. Instant Text Search & Settlement Filter */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <Search className="w-3.5 h-3.5 text-blue-600" />
+            <Search className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Search Settlement</span>
           </span>
           {filters.search && (
             <button
               onClick={() => handleRemoveFilter("search")}
-              className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-normal"
+              className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-semibold"
             >
               Clear
             </button>
@@ -146,12 +318,12 @@ export default function FilterPanel({
             placeholder="Type name, district, hazard..."
             value={filters.search || ""}
             onChange={(e) => handleChange("search", e.target.value)}
-            className="w-full pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
+            className="w-full pl-3 pr-8 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
           />
           {filters.search && (
             <button
               onClick={() => handleRemoveFilter("search")}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -159,16 +331,50 @@ export default function FilterPanel({
         </div>
       </div>
 
-      {/* 2. Active Filters Chips */}
+      {/* 2. Select Specific Settlement (Direct Focus & Route Plotting) */}
+      <div>
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Crosshair className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Select Specific Settlement</span>
+          </span>
+          {filters.settlementId && (
+            <button
+              onClick={() => handleRemoveFilter("settlementId")}
+              className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-semibold"
+            >
+              Clear
+            </button>
+          )}
+        </label>
+        <select
+          value={filters.settlementId || "all"}
+          onChange={(e) => handleSettlementChange(e.target.value)}
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+            filters.settlementId && filters.settlementId !== "all"
+              ? "border-indigo-500 bg-indigo-50/80 dark:bg-slate-800 text-indigo-900 dark:text-indigo-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+          }`}
+        >
+          <option value="all">🎯 All Settlements in View ({settlementsInScope.length})</option>
+          {settlementsInScope.map((h) => (
+            <option key={h.id} value={h.id}>
+              📍 {h.name} ({h.district} · {h.hazard})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* 3. Active Filters Chips */}
       {activeFilters.length > 0 && (
-        <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 rounded-xl border border-blue-200 dark:border-blue-900/60">
+        <div className="p-2.5 bg-blue-50 dark:bg-slate-800/80 rounded-xl border border-blue-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
               Active Criteria ({activeFilters.length})
             </span>
             <button
               onClick={handleClear}
-              className="text-[10px] font-bold text-blue-600 hover:underline"
+              className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
             >
               Reset All
             </button>
@@ -177,7 +383,7 @@ export default function FilterPanel({
             {activeFilters.map((f) => (
               <span
                 key={f.key}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200 dark:border-blue-700 shadow-xs"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white dark:bg-slate-900 text-blue-800 dark:text-blue-200 text-[10px] font-bold border border-blue-200 dark:border-slate-700 shadow-xs"
               >
                 <span>{f.label}</span>
                 <button
@@ -192,15 +398,52 @@ export default function FilterPanel({
         </div>
       )}
 
-      {/* 3. District Jurisdiction Filter */}
+      {/* 4. State Jurisdiction Filter */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-blue-600" />
+            <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>State Jurisdiction</span>
+          </span>
+          {isDistrictLocked && lockedState && (
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-0.5">
+              <Lock className="w-2.5 h-2.5" /> Locked
+            </span>
+          )}
+        </label>
+        <select
+          value={filters.state || (isDistrictLocked && lockedState ? lockedState : "all")}
+          disabled={isDistrictLocked}
+          onChange={(e) => handleStateChange(e.target.value)}
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+            isDistrictLocked
+              ? "bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+              : filters.state && filters.state !== "all"
+              ? "border-blue-500 bg-blue-50/80 dark:bg-slate-800 text-blue-900 dark:text-blue-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+          }`}
+        >
+          <option value="all">🇮🇳 All States ({habitations.length})</option>
+          {availableStates.map((st) => {
+            const count = stats.states[st] || 0;
+            return (
+              <option key={st} value={st}>
+                🏛️ {st} {count > 0 ? `(${count})` : ""}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {/* 5. District Jurisdiction Filter (Cascading from State) */}
+      <div>
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>District Jurisdiction</span>
           </span>
           {isDistrictLocked && (
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-0.5">
               <Lock className="w-2.5 h-2.5" /> Locked
             </span>
           )}
@@ -208,17 +451,21 @@ export default function FilterPanel({
         <select
           value={filters.district || "all"}
           disabled={isDistrictLocked}
-          onChange={(e) => handleChange("district", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          onChange={(e) => handleDistrictChange(e.target.value)}
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             isDistrictLocked
-              ? "bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700 text-slate-500 cursor-not-allowed"
+              ? "bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
               : filters.district && filters.district !== "all"
-              ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-blue-500 bg-blue-50/80 dark:bg-slate-800 text-blue-900 dark:text-blue-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
-          <option value="all">🇮🇳 All Districts ({habitations.length})</option>
-          {districts.map((d) => {
+          <option value="all">
+            {filters.state && filters.state !== "all"
+              ? `📍 All Districts in ${filters.state} (${settlementsInScope.length})`
+              : `🇮🇳 All Districts (${habitations.length})`}
+          </option>
+          {visibleDistricts.map((d) => {
             const count = stats.districts[d] || 0;
             return (
               <option key={d} value={d}>
@@ -229,19 +476,19 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 4. Hazard Type */}
+      {/* 6. Hazard Type */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
           <span>Hazard Type</span>
         </label>
         <select
           value={filters.hazard || "all"}
           onChange={(e) => handleChange("hazard", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             filters.hazard && filters.hazard !== "all"
-              ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-amber-500 bg-amber-50/80 dark:bg-slate-800 text-amber-900 dark:text-amber-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
           <option value="all">All Hazards ({habitations.length})</option>
@@ -256,19 +503,19 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 5. Threat / Risk Level */}
+      {/* 7. Threat / Risk Level */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
           <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
           <span>Risk Level</span>
         </label>
         <select
           value={filters.riskLevel || "all"}
           onChange={(e) => handleChange("riskLevel", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             filters.riskLevel && filters.riskLevel !== "all"
-              ? "border-red-500 bg-red-50/50 dark:bg-red-950/30 text-red-900 dark:text-red-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-red-500 bg-red-50/80 dark:bg-slate-800 text-red-900 dark:text-red-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
           <option value="all">All Levels ({habitations.length})</option>
@@ -279,19 +526,19 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 6. Vulnerability Index */}
+      {/* 8. Vulnerability Index */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
           <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
           <span>Vulnerability</span>
         </label>
         <select
           value={filters.vulnerability || "all"}
           onChange={(e) => handleChange("vulnerability", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             filters.vulnerability && filters.vulnerability !== "all"
-              ? "border-purple-500 bg-purple-50/50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-purple-500 bg-purple-50/80 dark:bg-slate-800 text-purple-900 dark:text-purple-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
           <option value="all">All Vulnerability ({habitations.length})</option>
@@ -303,19 +550,19 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 7. Shelter Capacity Status */}
+      {/* 9. Shelter Capacity Status */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-indigo-500" />
           <span>Capacity Deficit Status</span>
         </label>
         <select
           value={filters.capacityStatus || "all"}
           onChange={(e) => handleChange("capacityStatus", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             filters.capacityStatus && filters.capacityStatus !== "all"
-              ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-indigo-500 bg-indigo-50/80 dark:bg-slate-800 text-indigo-900 dark:text-indigo-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
           <option value="all">All Statuses ({habitations.length})</option>
@@ -330,19 +577,19 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 8. Relocation Priority */}
+      {/* 10. Relocation Priority */}
       <div>
-        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
           <Zap className="w-3.5 h-3.5 text-purple-500" />
           <span>Relocation Priority</span>
         </label>
         <select
           value={filters.priority || "all"}
           onChange={(e) => handleChange("priority", e.target.value)}
-          className={`w-full px-3 py-2 rounded-xl border text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
+          className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${
             filters.priority && filters.priority !== "all"
-              ? "border-purple-500 bg-purple-50/50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 font-bold"
-              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+              ? "border-purple-500 bg-purple-50/80 dark:bg-slate-800 text-purple-900 dark:text-purple-200 font-bold"
+              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
           }`}
         >
           <option value="all">All Priorities ({habitations.length})</option>
@@ -353,12 +600,12 @@ export default function FilterPanel({
         </select>
       </div>
 
-      {/* 9. Reset / Clear Button */}
+      {/* 11. Reset / Clear Button */}
       <button
         onClick={handleClear}
-        className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition font-bold text-xs shadow-sm active:scale-98"
+        className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition font-bold text-xs shadow-sm active:scale-98"
       >
-        <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
+        <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
         <span>Reset Matrix Filters</span>
       </button>
     </div>

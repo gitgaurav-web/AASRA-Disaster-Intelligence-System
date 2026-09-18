@@ -32,11 +32,74 @@
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-content,
+.leaflet-popup-content * {
+  color: #0f172a;
+}
+
+.leaflet-popup-content .text-slate-500,
+.leaflet-popup-content .text-slate-400 {
+  color: #475569 !important;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-content,
+.dark .leaflet-popup-content * {
+  color: #f8fafc;
+}
+
+.dark .leaflet-popup-content .text-slate-900,
+.dark .leaflet-popup-content .text-slate-800,
+.dark .leaflet-popup-content .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+.dark .leaflet-popup-content .text-slate-500,
+.dark .leaflet-popup-content .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
+.dark .leaflet-popup-tip {
+  background: #0f172a !important;
 }
 
 .leaflet-popup-content {
   margin: 12px 14px;
   line-height: 1.5;
 }
+
+/* Ensure native select, options, and inputs always have 100% visible, high-contrast text and background across all OSes */
+select {
+  color-scheme: light dark;
+}
+
+select, select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark select, .dark select option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+

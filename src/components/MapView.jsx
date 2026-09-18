@@ -458,9 +458,9 @@ export default function MapView({
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
               layer.bindPopup(`
-                <div style="font-size:12px; font-family:sans-serif; min-width:180px;">
+                <div style="font-size:12px; font-family:sans-serif; min-width:180px; color: inherit;">
                   <strong style="color:#d93025; font-size:13px;">⚠️ ${p.name || "Risk Screening Area"}</strong>
-                  <div style="margin-top:5px; font-size:11px; color:#374151;">
+                  <div style="margin-top:5px; font-size:11px; color: inherit; opacity: 0.9;">
                     Hazard: <strong>${p.hazard || "Multi-Hazard"}</strong><br/>
                     Risk Index: <strong>${p.risk_level || "Critical"}</strong><br/>
                     Buffer Type: <em>${p.classification || "Official Screening"}</em>
@@ -522,7 +522,7 @@ export default function MapView({
                 <Popup>
                   <div className="text-xs p-1 min-w-[220px] font-sans">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="font-bold text-slate-900 text-sm leading-tight">{hab.name}</span>
+                      <span className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{hab.name}</span>
                       <span
                         className="px-2 py-0.5 rounded text-[10px] font-black text-white flex-shrink-0"
                         style={{ backgroundColor: getRiskColor(riskLevel) }}
@@ -531,23 +531,23 @@ export default function MapView({
                       </span>
                     </div>
 
-                    <p className="text-slate-500 text-[11px] mb-2 font-medium">
+                    <p className="text-slate-600 dark:text-slate-300 text-[11px] mb-2 font-medium">
                       📍 {hab.district} District
                     </p>
 
-                    <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
+                    <div className="space-y-1.5 bg-slate-50 dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 mb-2.5 text-[11px]">
                       <div className="flex justify-between">
                         <span>Active Hazard:</span>
                         <strong className="text-red-600 dark:text-red-400 font-bold">{hab.hazard}</strong>
                       </div>
                       <div className="flex justify-between">
                         <span>Population at Risk:</span>
-                        <strong className="font-bold">{hab.population ? hab.population.toLocaleString() : "N/A"}</strong>
+                        <strong className="font-bold text-slate-900 dark:text-white">{hab.population ? hab.population.toLocaleString() : "N/A"}</strong>
                       </div>
                       {hab.riskScore !== undefined && (
                         <div className="flex justify-between">
                           <span>Vulnerability Index:</span>
-                          <strong>{Number(hab.riskScore).toFixed(1)} / 100</strong>
+                          <strong className="text-slate-900 dark:text-white">{Number(hab.riskScore).toFixed(1)} / 100</strong>
                         </div>
                       )}
                     </div>
@@ -597,15 +597,15 @@ export default function MapView({
               >
                 <Popup>
                   <div className="text-xs p-1 min-w-[230px] font-sans">
-                    <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/70 px-2 py-0.5 rounded-md w-fit">
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/70 px-2 py-0.5 rounded-md w-fit">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       <span>GOVERNMENT SAFE SHELTER</span>
                     </div>
 
-                    <h4 className="font-bold text-slate-900 text-sm mt-1 leading-snug">{site.name}</h4>
-                    <p className="text-slate-500 text-[11px] mb-2 font-medium">📍 {site.district} District</p>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-1 leading-snug">{site.name}</h4>
+                    <p className="text-slate-600 dark:text-slate-300 text-[11px] mb-2 font-medium">📍 {site.district} District</p>
 
-                    <div className="space-y-1.5 bg-blue-50/60 dark:bg-slate-800 p-2.5 rounded-xl border border-blue-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 mb-2.5 text-[11px]">
+                    <div className="space-y-1.5 bg-blue-50/60 dark:bg-slate-800/90 p-2.5 rounded-xl border border-blue-100 dark:border-slate-700 text-slate-800 dark:text-slate-100 mb-2.5 text-[11px]">
                       <div className="flex justify-between">
                         <span>Available Space:</span>
                         <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -614,11 +614,11 @@ export default function MapView({
                       </div>
                       <div className="flex justify-between">
                         <span>Total Capacity:</span>
-                        <strong>{site.capacity ? site.capacity.toLocaleString() : "N/A"}</strong>
+                        <strong className="text-slate-900 dark:text-white">{site.capacity ? site.capacity.toLocaleString() : "N/A"}</strong>
                       </div>
                       <div className="flex justify-between">
                         <span>Road Connectivity:</span>
-                        <strong>{site.accessibility || "Good"}</strong>
+                        <strong className="text-slate-900 dark:text-white">{site.accessibility || "Good"}</strong>
                       </div>
                     </div>
 

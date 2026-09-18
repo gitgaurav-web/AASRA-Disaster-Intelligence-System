@@ -22,26 +22,32 @@ import MapView from "@/components/MapView";
 import MapLegend from "@/components/MapLegend";
 import FilterPanel from "@/components/FilterPanel";
 import ScenarioSandbox from "@/components/ScenarioSandbox";
+import {
+  STATE_COORDINATES,
+  getStateForDistrict,
+  getDistrictsForState,
+  ALL_STATES,
+} from "@/data/jurisdictionData";
 
 // High-fidelity fallback GIS points for national demonstration resilience
 const DEFAULT_HABITATIONS = [
-  { id: 1, name: "Chamoli Rockfall & Slope Instability", district: "Chamoli", coords: [30.4034, 79.324], population: 1420, households: 315, hazard: "Landslide", riskScore: 88, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 850, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
-  { id: 2, name: "Kosi River Embankment Threat", district: "Darbhanga", coords: [26.1554, 85.8918], population: 3100, households: 688, hazard: "Flood", riskScore: 92, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 1600, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
-  { id: 3, name: "Wayanad Sector Mudflow Hazard", district: "Wayanad", coords: [11.6854, 76.132], population: 890, households: 198, hazard: "Mudflow", riskScore: 84, riskLevel: "Critical", vulnerability: "High", accessibility: "Moderate", capacityDeficit: 450, capacityStatus: "Deficit", priority: "Immediate", status: "Active" },
-  { id: 4, name: "Ganga Basin High Flow Alert", district: "Varanasi", coords: [25.3176, 82.9739], population: 5200, households: 1150, hazard: "Flood", riskScore: 76, riskLevel: "Critical", vulnerability: "High", accessibility: "Good", capacityDeficit: 2100, capacityStatus: "Deficit", priority: "Short-Term", status: "Active" },
-  { id: 5, name: "Brahmaputra Basin Flood Watch", district: "Dibrugarh", coords: [26.1445, 91.7362], population: 4100, households: 910, hazard: "Flood", riskScore: 90, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 2200, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
-  { id: 6, name: "Simlipal Reserve Wildfire Hotspot", district: "Mayurbhanj", coords: [21.9397, 86.3264], population: 1250, households: 275, hazard: "Wildfire", riskScore: 68, riskLevel: "High", vulnerability: "Moderate", accessibility: "Moderate", capacityDeficit: 350, capacityStatus: "Warning", priority: "Short-Term", status: "Active" },
-  { id: 7, name: "Bandipur Forest Thermal Anomaly", district: "Chamarajanagar", coords: [11.854, 76.6288], population: 980, households: 218, hazard: "Forest Fire", riskScore: 65, riskLevel: "High", vulnerability: "Moderate", accessibility: "Good", capacityDeficit: 200, capacityStatus: "Adequate", priority: "Short-Term", status: "Active" },
+  { id: 1, name: "Chamoli Rockfall & Slope Instability", district: "Chamoli", state: "Uttarakhand", coords: [30.4034, 79.324], population: 1420, households: 315, hazard: "Landslide", riskScore: 88, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 850, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
+  { id: 2, name: "Kosi River Embankment Threat", district: "Darbhanga", state: "Bihar", coords: [26.1554, 85.8918], population: 3100, households: 688, hazard: "Flood", riskScore: 92, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 1600, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
+  { id: 3, name: "Wayanad Sector Mudflow Hazard", district: "Wayanad", state: "Kerala", coords: [11.6854, 76.132], population: 890, households: 198, hazard: "Mudflow", riskScore: 84, riskLevel: "Critical", vulnerability: "High", accessibility: "Moderate", capacityDeficit: 450, capacityStatus: "Deficit", priority: "Immediate", status: "Active" },
+  { id: 4, name: "Ganga Basin High Flow Alert", district: "Varanasi", state: "Uttar Pradesh", coords: [25.3176, 82.9739], population: 5200, households: 1150, hazard: "Flood", riskScore: 76, riskLevel: "Critical", vulnerability: "High", accessibility: "Good", capacityDeficit: 2100, capacityStatus: "Deficit", priority: "Short-Term", status: "Active" },
+  { id: 5, name: "Brahmaputra Basin Flood Watch", district: "Dibrugarh", state: "Assam", coords: [26.1445, 91.7362], population: 4100, households: 910, hazard: "Flood", riskScore: 90, riskLevel: "Critical", vulnerability: "Very High", accessibility: "Poor", capacityDeficit: 2200, capacityStatus: "Critical Deficit", priority: "Immediate", status: "Active" },
+  { id: 6, name: "Simlipal Reserve Wildfire Hotspot", district: "Mayurbhanj", state: "Odisha", coords: [21.9397, 86.3264], population: 1250, households: 275, hazard: "Wildfire", riskScore: 68, riskLevel: "High", vulnerability: "Moderate", accessibility: "Moderate", capacityDeficit: 350, capacityStatus: "Warning", priority: "Short-Term", status: "Active" },
+  { id: 7, name: "Bandipur Forest Thermal Anomaly", district: "Chamarajanagar", state: "Karnataka", coords: [11.854, 76.6288], population: 980, households: 218, hazard: "Forest Fire", riskScore: 65, riskLevel: "High", vulnerability: "Moderate", accessibility: "Good", capacityDeficit: 200, capacityStatus: "Adequate", priority: "Short-Term", status: "Active" },
 ];
 
 const DEFAULT_SHELTERS = [
-  { id: 101, name: "Dynamic Relief Shelter 4 (Chamoli)", district: "Chamoli", coords: [30.3974, 79.316], capacity: 2100, available: 1050, occupancy: 1050, accessibility: "Good", distance: 1.8, status: "Active" },
-  { id: 102, name: "Dynamic Relief Shelter 2 (Darbhanga)", district: "Darbhanga", coords: [26.1494, 85.8838], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 2.1, status: "Active" },
-  { id: 103, name: "Dynamic Relief Shelter 5 (Wayanad)", district: "Wayanad", coords: [11.6934, 76.142], capacity: 2100, available: 1050, occupancy: 1050, accessibility: "Good", distance: 1.5, status: "Active" },
-  { id: 104, name: "Dynamic Relief Shelter 3 (Varanasi)", district: "Varanasi", coords: [25.3256, 82.9839], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 3.4, status: "Active" },
-  { id: 105, name: "Dynamic Relief Shelter 1 (Dibrugarh)", district: "Dibrugarh", coords: [26.1525, 91.7462], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 2.2, status: "Active" },
-  { id: 106, name: "Dynamic Relief Shelter 6 (Mayurbhanj)", district: "Mayurbhanj", coords: [21.9337, 86.3184], capacity: 1400, available: 700, occupancy: 700, accessibility: "Moderate", distance: 2.8, status: "Active" },
-  { id: 107, name: "Dynamic Relief Shelter 7 (Chamarajanagar)", district: "Chamarajanagar", coords: [11.862, 76.6388], capacity: 1400, available: 700, occupancy: 700, accessibility: "Good", distance: 1.9, status: "Active" },
+  { id: 101, name: "Dynamic Relief Shelter 4 (Chamoli)", district: "Chamoli", state: "Uttarakhand", coords: [30.3974, 79.316], capacity: 2100, available: 1050, occupancy: 1050, accessibility: "Good", distance: 1.8, status: "Active" },
+  { id: 102, name: "Dynamic Relief Shelter 2 (Darbhanga)", district: "Darbhanga", state: "Bihar", coords: [26.1494, 85.8838], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 2.1, status: "Active" },
+  { id: 103, name: "Dynamic Relief Shelter 5 (Wayanad)", district: "Wayanad", state: "Kerala", coords: [11.6934, 76.142], capacity: 2100, available: 1050, occupancy: 1050, accessibility: "Good", distance: 1.5, status: "Active" },
+  { id: 104, name: "Dynamic Relief Shelter 3 (Varanasi)", district: "Varanasi", state: "Uttar Pradesh", coords: [25.3256, 82.9839], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 3.4, status: "Active" },
+  { id: 105, name: "Dynamic Relief Shelter 1 (Dibrugarh)", district: "Dibrugarh", state: "Assam", coords: [26.1525, 91.7462], capacity: 6250, available: 3125, occupancy: 3125, accessibility: "Good", distance: 2.2, status: "Active" },
+  { id: 106, name: "Dynamic Relief Shelter 6 (Mayurbhanj)", district: "Mayurbhanj", state: "Odisha", coords: [21.9337, 86.3184], capacity: 1400, available: 700, occupancy: 700, accessibility: "Moderate", distance: 2.8, status: "Active" },
+  { id: 107, name: "Dynamic Relief Shelter 7 (Chamarajanagar)", district: "Chamarajanagar", state: "Karnataka", coords: [11.862, 76.6388], capacity: 1400, available: 700, occupancy: 700, accessibility: "Good", distance: 1.9, status: "Active" },
 ];
 
 const DISTRICT_COORDINATES = {
@@ -120,7 +126,12 @@ export default function RiskMap() {
   // Sync role-based district into map filters
   useEffect(() => {
     if (districtScope) {
-      setFilters((prev) => ({ ...prev, district: districtScope }));
+      const st = getStateForDistrict(districtScope);
+      setFilters((prev) => ({
+        ...prev,
+        district: districtScope,
+        ...(st ? { state: st } : {}),
+      }));
     } else {
       setFilters((prev) => {
         const next = { ...prev };
@@ -152,6 +163,7 @@ export default function RiskMap() {
             id: p.id,
             name: p.name,
             district: p.district,
+            state: p.state || getStateForDistrict(p.district) || "Unknown",
             population: Number(p.population || 0),
             households: Number(p.households || 0),
             hazard: p.hazard || "Unknown",
@@ -192,6 +204,7 @@ export default function RiskMap() {
             id: p.id,
             name: p.name,
             district: p.district,
+            state: p.state || getStateForDistrict(p.district) || "Unknown",
             capacity: Number(p.capacity || 0),
             occupancy: Number(p.occupancy || 0),
             available: Number(p.available || 0),
@@ -256,11 +269,39 @@ export default function RiskMap() {
     loadGISData();
   }, []);
 
+  // Smooth Camera FlyTo State helper
+  const handleFlyToState = (stateName) => {
+    if (!stateName || stateName === "all") {
+      setMapCenter([22.8, 79.5]);
+      setMapZoom(5);
+      return;
+    }
+    const target = STATE_COORDINATES[stateName];
+    if (target) {
+      setMapCenter(target.center);
+      setMapZoom(target.zoom);
+    } else {
+      const match = habitations.find(
+        (h) =>
+          h.state?.toLowerCase() === stateName.toLowerCase() ||
+          getStateForDistrict(h.district)?.toLowerCase() === stateName.toLowerCase()
+      );
+      if (match?.coords) {
+        setMapCenter(match.coords);
+        setMapZoom(8);
+      }
+    }
+  };
+
   // Smooth Camera FlyTo District helper
   const handleFlyToDistrict = (d) => {
     if (!d || d === "all") {
-      setMapCenter([22.8, 79.5]);
-      setMapZoom(5);
+      if (filters.state && filters.state !== "all") {
+        handleFlyToState(filters.state);
+      } else {
+        setMapCenter([22.8, 79.5]);
+        setMapZoom(5);
+      }
       return;
     }
     const target = DISTRICT_COORDINATES[d] || DISTRICT_COORDINATES[d.toLowerCase()];
@@ -283,19 +324,33 @@ export default function RiskMap() {
       if (districtScope && h.district?.toLowerCase() !== districtScope.toLowerCase()) {
         return false;
       }
-      // 2. District filter from Matrix
+      // 2. State filter from Matrix
+      if (filters.state && filters.state !== "all") {
+        const hState = h.state || getStateForDistrict(h.district);
+        if (hState?.toLowerCase() !== filters.state.toLowerCase()) {
+          return false;
+        }
+      }
+      // 3. District filter from Matrix
       if (filters.district && filters.district !== "all" && h.district?.toLowerCase() !== filters.district.toLowerCase()) {
         return false;
       }
-      // 3. Search query (matches name, district, or hazard)
+      // 4. Specific settlement selection filter
+      if (filters.settlementId && filters.settlementId !== "all") {
+        if (String(h.id) !== String(filters.settlementId)) {
+          return false;
+        }
+      }
+      // 5. Search query (matches name, district, hazard, or state)
       if (filters.search) {
         const q = filters.search.toLowerCase().trim();
-        const matchName = h.name?.toLowerCase().includes(q);
-        const matchDistrict = h.district?.toLowerCase().includes(q);
+        const matchName = (h.name || "").toLowerCase().includes(q);
+        const matchDistrict = (h.district || "").toLowerCase().includes(q);
         const matchHazard = (h.hazard || "").toLowerCase().includes(q);
-        if (!matchName && !matchDistrict && !matchHazard) return false;
+        const matchState = (h.state || getStateForDistrict(h.district) || "").toLowerCase().includes(q);
+        if (!matchName && !matchDistrict && !matchHazard && !matchState) return false;
       }
-      // 4. Hazard filter (case-insensitive & lenient with forest fire synonyms)
+      // 6. Hazard filter (case-insensitive & lenient with forest fire synonyms)
       if (filters.hazard && filters.hazard !== "all") {
         const hHaz = (h.hazard || "").toLowerCase();
         const fHaz = filters.hazard.toLowerCase();
@@ -306,7 +361,7 @@ export default function RiskMap() {
           return false;
         }
       }
-      // 5. Risk Level filter (Critical, High, Moderate/Medium, Low)
+      // 7. Risk Level filter (Critical, High, Moderate/Medium, Low)
       if (filters.riskLevel && filters.riskLevel !== "all") {
         const hRisk = (h.riskLevel || h.risk_level || "").toLowerCase();
         const fRisk = filters.riskLevel.toLowerCase();
@@ -314,7 +369,7 @@ export default function RiskMap() {
         const normF = fRisk === "medium" ? "moderate" : fRisk;
         if (normH !== normF) return false;
       }
-      // 6. Vulnerability filter (Critical, Very High, High, Moderate, Low)
+      // 8. Vulnerability filter (Critical, Very High, High, Moderate, Low)
       if (filters.vulnerability && filters.vulnerability !== "all") {
         const hVuln = (h.vulnerability || "").toLowerCase();
         const fVuln = filters.vulnerability.toLowerCase();
@@ -322,7 +377,7 @@ export default function RiskMap() {
           return false;
         }
       }
-      // 7. Capacity Status filter (Critical, Deficit, Moderate/Warning, Adequate)
+      // 9. Capacity Status filter (Critical, Deficit, Moderate/Warning, Adequate)
       if (filters.capacityStatus && filters.capacityStatus !== "all") {
         const hCap = (h.capacityStatus || h.capacity_status || "").toLowerCase();
         const fCap = filters.capacityStatus.toLowerCase();
@@ -336,7 +391,7 @@ export default function RiskMap() {
           return false;
         }
       }
-      // 8. Relocation Priority filter (Immediate, Short-Term, Planned, Monitor)
+      // 10. Relocation Priority filter (Immediate, Short-Term, Planned, Monitor)
       if (filters.priority && filters.priority !== "all") {
         const hPri = (h.priority || "").toLowerCase();
         const fPri = filters.priority.toLowerCase();
@@ -350,13 +405,22 @@ export default function RiskMap() {
 
   // Filter Relocation Sites strictly scoped to Active District Scope or user-selected District
   const scopedSites = useMemo(() => {
+    let sites = relocationSites;
     const targetDistrict =
       districtScope || (filters.district && filters.district !== "all" ? filters.district : null);
-    if (!targetDistrict) return relocationSites;
-    return relocationSites.filter(
-      (s) => s.district?.toLowerCase() === targetDistrict.toLowerCase()
-    );
-  }, [relocationSites, districtScope, filters.district]);
+    if (targetDistrict) {
+      return sites.filter(
+        (s) => s.district?.toLowerCase() === targetDistrict.toLowerCase()
+      );
+    }
+    if (filters.state && filters.state !== "all") {
+      return sites.filter((s) => {
+        const sState = s.state || getStateForDistrict(s.district);
+        return sState?.toLowerCase() === filters.state.toLowerCase();
+      });
+    }
+    return sites;
+  }, [relocationSites, districtScope, filters.district, filters.state]);
 
   const districts = useMemo(() => {
     if (districtScope) return [districtScope];
@@ -615,6 +679,8 @@ export default function RiskMap() {
                 habitations={scopedBaseHabitations}
                 isDistrictLocked={Boolean(districtScope)}
                 onFlyToDistrict={handleFlyToDistrict}
+                onFlyToState={handleFlyToState}
+                onSelectSettlement={handleToggleHabitation}
               />
             </div>
           </div>
