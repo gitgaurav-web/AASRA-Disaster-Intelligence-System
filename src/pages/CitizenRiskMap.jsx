@@ -300,8 +300,8 @@ export default function CitizenRiskMap() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
-      {/* 1. CITIZEN FAST EMERGENCY TICKER */}
-      <div className="bg-red-700 text-white px-4 py-2 border-b border-red-800 shadow-sm">
+      {/* 1. CITIZEN FAST EMERGENCY TICKER (Desktop only - mobile has bottom nav) */}
+      <div className="hidden md:block bg-red-700 text-white px-4 py-2 border-b border-red-800 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 rounded-full bg-white animate-ping" />
@@ -333,18 +333,18 @@ export default function CitizenRiskMap() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-20">
         {/* 2. PAGE HERO & GOOGLE MAPS POWERED INTRO */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="mb-4 sm:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wider mb-1">
               <ShieldCheck className="w-4 h-4" />
               <span>Google Maps Verified Public Safety Portal</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Citizen Disaster Risk & Safe Shelter Map
             </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
               Locate government-vetted cyclone shelters, inspect neighborhood hazard alerts, and navigate safe evacuation corridors via Google Maps.
             </p>
           </div>
@@ -353,7 +353,7 @@ export default function CitizenRiskMap() {
             <button
               onClick={handleLocateCitizen}
               disabled={isLocating}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition active:scale-95"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition active:scale-95"
             >
               {isLocating ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -365,15 +365,15 @@ export default function CitizenRiskMap() {
           </div>
         </div>
 
-        {/* 3. DISTRICT JUMP PILLS */}
-        <div className="mb-6 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1">
+        {/* 3. DISTRICT JUMP PILLS - Sleek swipeable on mobile */}
+        <div className="mb-4 sm:mb-6 bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-2 flex items-center gap-1 flex-shrink-0">
             <Compass className="w-3.5 h-3.5 text-blue-600" />
-            <span>Select Jurisdiction:</span>
+            <span className="hidden sm:inline">Select Jurisdiction:</span>
           </span>
           <button
             onClick={() => handleDistrictChange("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 whitespace-nowrap ${
               selectedDistrict === "all"
                 ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
@@ -385,7 +385,7 @@ export default function CitizenRiskMap() {
             <button
               key={d}
               onClick={() => handleDistrictChange(d)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex-shrink-0 whitespace-nowrap ${
                 selectedDistrict === d
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                   : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"

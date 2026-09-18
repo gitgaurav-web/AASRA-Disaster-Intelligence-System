@@ -140,35 +140,147 @@ export default function CommunityReports() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <PageHeader title="Community Flood Reports & Alert Preview" subtitle="GPS-enabled citizen reports for officer verification; no external alert is dispatched." icon={Users} />
-        <div className="grid lg:grid-cols-5 gap-6 mt-6">
-          <form onSubmit={submit} className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
-            <h2 className="font-bold text-sm flex gap-2 items-center"><Send className="w-4 h-4 text-blue-600" /> Submit field report</h2>
-            <input required name="reporter_name" value={form.reporter_name} onChange={setValue} placeholder="Reporter name" className="w-full rounded-lg border p-2.5 text-sm bg-transparent" />
-            <input name="contact" value={form.contact} onChange={setValue} placeholder="Phone/email (optional)" className="w-full rounded-lg border p-2.5 text-sm bg-transparent" />
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24">
+        <PageHeader title="Community Disaster Reports & SOS Alerts" subtitle="GPS-enabled verified citizen incident reporting connected to emergency authorities." icon={Users} />
+        <div className="grid lg:grid-cols-5 gap-6 mt-4 sm:mt-6">
+          <form onSubmit={submit} className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="font-black text-sm sm:text-base flex gap-2 items-center text-slate-900 dark:text-white">
+                <Send className="w-4 h-4 text-red-600" /> Submit Field Hazard Report
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                CITIZEN SOS
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reporter Name *</label>
+              <input required name="reporter_name" value={form.reporter_name} onChange={setValue} placeholder="Your Full Name" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 text-sm bg-slate-50/50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 transition" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Contact Phone / Email (Optional)</label>
+              <input name="contact" value={form.contact} onChange={setValue} placeholder="+91 98765 43210" className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 text-sm bg-slate-50/50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 transition" />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <select name="hazard" value={form.hazard} onChange={setValue} className="rounded-lg border p-2.5 text-sm bg-transparent"><option>Flood</option><option>Waterlogging</option><option>Landslide</option></select>
-              <select name="severity" value={form.severity} onChange={setValue} className="rounded-lg border p-2.5 text-sm bg-transparent"><option>Warning</option><option>High</option><option>Critical</option></select>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Hazard Type</label>
+                <select name="hazard" value={form.hazard} onChange={setValue} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 text-sm bg-slate-50/50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800">
+                  <option>Flood</option>
+                  <option>Waterlogging</option>
+                  <option>Landslide</option>
+                  <option>Cyclone</option>
+                  <option>Earthquake</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Urgency / Severity</label>
+                <select name="severity" value={form.severity} onChange={setValue} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 text-sm bg-slate-50/50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800">
+                  <option>Warning</option>
+                  <option>High</option>
+                  <option>Critical</option>
+                </select>
+              </div>
             </div>
-            <textarea required minLength="10" name="description" value={form.description} onChange={setValue} rows="4" placeholder="Describe water level, affected road/area, and immediate risk..." className="w-full rounded-lg border p-2.5 text-sm bg-transparent" />
-            <input name="evidence_url" value={form.evidence_url} onChange={setValue} placeholder="Photo/video evidence link (optional)" type="url" className="w-full rounded-lg border p-2.5 text-sm bg-transparent" />
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Or attach a photo (max 900 KB)<input onChange={attachPhoto} type="file" accept="image/*" className="mt-1 block w-full text-xs" /></label>
-            {form.evidence_data && <img src={form.evidence_data} alt="Evidence preview" className="h-24 w-full object-cover rounded-lg border" />}
-            <button type="button" onClick={useLocation} className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><LocateFixed className="w-4 h-4" /> {locating ? "Finding location..." : "Use my current location"}</button>
-            <div className="grid grid-cols-2 gap-3"><input required name="latitude" value={form.latitude} onChange={setValue} placeholder="Latitude" type="number" step="any" className="rounded-lg border p-2.5 text-sm bg-transparent" /><input required name="longitude" value={form.longitude} onChange={setValue} placeholder="Longitude" type="number" step="any" className="rounded-lg border p-2.5 text-sm bg-transparent" /></div>
-            <button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white p-2.5 text-sm font-bold">Submit for verification</button>
-            {message && <p className="text-xs text-amber-700 dark:text-amber-300">{message}</p>}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Incident Description *</label>
+              <textarea required minLength="10" name="description" value={form.description} onChange={setValue} rows="3" placeholder="Describe water level, affected road, trapped families, or immediate danger..." className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 text-sm bg-slate-50/50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 transition" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Attach Photo Proof (Camera / Gallery)</label>
+              <input onChange={attachPhoto} type="file" accept="image/*" className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 dark:file:bg-slate-800 dark:file:text-blue-300 hover:file:bg-blue-100" />
+            </div>
+            {form.evidence_data && <img src={form.evidence_data} alt="Evidence preview" className="h-32 w-full object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm" />}
+
+            <div className="pt-1">
+              <button type="button" onClick={useLocation} className="w-full py-2.5 px-3 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 text-xs font-bold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2 transition active:scale-95">
+                <LocateFixed className="w-4 h-4 text-blue-600 animate-pulse" />
+                <span>{locating ? "Acquiring GPS Position..." : "Auto-fill with My GPS Location"}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <input required name="latitude" value={form.latitude} onChange={setValue} placeholder="Latitude (e.g. 26.155)" type="number" step="any" className="rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 text-xs bg-slate-50/50 dark:bg-slate-800/60" />
+              <input required name="longitude" value={form.longitude} onChange={setValue} placeholder="Longitude (e.g. 85.891)" type="number" step="any" className="rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 text-xs bg-slate-50/50 dark:bg-slate-800/60" />
+            </div>
+
+            <button className="w-full rounded-xl bg-red-600 hover:bg-red-500 text-white py-3.5 px-4 text-sm font-black shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition active:scale-95">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Submit SOS Report to Authorities</span>
+            </button>
+            {message && <p className="text-xs font-bold text-center text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-900/50">{message}</p>}
           </form>
+
           <section className="lg:col-span-3 space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-              <div className="flex justify-between items-center gap-3 mb-3"><h2 className="font-bold text-sm flex items-center gap-2"><Radio className="w-4 h-4 text-red-600" /> Localized alert preview</h2><div className="flex gap-2 items-center"><select value={language} onChange={(event) => { setLanguage(event.target.value); load(event.target.value); }} className="text-xs rounded border p-1.5 bg-transparent"><option value="en">English</option><option value="hi">हिंदी</option></select><button onClick={() => load()} className="text-xs flex gap-1 items-center text-blue-600"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button></div></div>
-              {loading ? <p className="text-sm text-slate-500">Loading alert feed...</p> : alerts.length === 0 ? <p className="text-sm text-slate-500">No high-priority flood alerts in the current demo feed.</p> : <div className="space-y-3">{alerts.map((alert) => <div key={alert.id} className="border-l-4 border-red-500 bg-red-50 dark:bg-red-950/30 p-3 rounded-r-lg"><p className="text-sm font-bold flex gap-2"><AlertTriangle className="w-4 h-4 text-red-600" />{alert.title}</p><p className="text-xs mt-1">{alert.message}</p><p className="text-[11px] text-slate-500 mt-2 flex gap-1"><MapPin className="w-3 h-3" /> {alert.latitude.toFixed(4)}, {alert.longitude.toFixed(4)} · {alert.channel}</p></div>)}</div>}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+              <div className="flex justify-between items-center gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="font-black text-sm sm:text-base flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-red-600 animate-pulse" /> Live Localized Alert Preview
+                </h2>
+                <div className="flex gap-2 items-center">
+                  <select value={language} onChange={(event) => { setLanguage(event.target.value); load(event.target.value); }} className="text-xs rounded-lg border border-slate-200 dark:border-slate-700 p-1.5 bg-slate-50 dark:bg-slate-800 font-bold">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी</option>
+                  </select>
+                  <button onClick={() => load()} className="text-xs flex gap-1 items-center font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                    <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                  </button>
+                </div>
+              </div>
+              {loading ? <p className="text-sm text-slate-500 py-4 text-center">Loading alert feed...</p> : alerts.length === 0 ? <p className="text-xs text-slate-500 py-4 text-center">No high-priority flood alerts in the current demo feed.</p> : (
+                <div className="space-y-3">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className="border-l-4 border-red-500 bg-red-50/70 dark:bg-red-950/30 p-3.5 rounded-r-xl space-y-1.5">
+                      <p className="text-sm font-bold flex items-center gap-2 text-red-700 dark:text-red-400">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>{alert.title}</span>
+                      </p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{alert.message}</p>
+                      <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-red-500" /> {alert.latitude.toFixed(4)}, {alert.longitude.toFixed(4)} · {alert.channel}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm"><h2 className="font-bold text-sm mb-3">Latest submitted reports</h2>{reports.length === 0 ? <p className="text-sm text-slate-500">No community reports submitted yet.</p> : <div className="space-y-2">{reports.map((report) => <div key={report.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs"><strong>{report.hazard} — {report.severity}</strong><p className="mt-1">{report.description}</p>{report.evidence_data && <img src={report.evidence_data} alt="Submitted field evidence" className="mt-2 h-28 w-full max-w-xs object-cover rounded border" />}{report.evidence_url && <a href={report.evidence_url} target="_blank" rel="noreferrer" className="mt-1 block text-blue-600 underline">Open submitted evidence</a>}<p className="mt-1 text-amber-700 dark:text-amber-300">{report.verification_status}</p>{report.verification_status === "Pending officer verification" && <div className="flex gap-2 mt-2"><button onClick={() => reviewReport(report.id, "Verified")} className="rounded bg-emerald-600 text-white px-2 py-1 font-semibold">Verify</button><button onClick={() => reviewReport(report.id, "Needs field visit")} className="rounded bg-amber-500 text-slate-950 px-2 py-1 font-semibold">Field visit</button><button onClick={() => reviewReport(report.id, "Rejected")} className="rounded bg-slate-600 text-white px-2 py-1 font-semibold">Reject</button></div>}</div>)}</div>}</div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+              <h2 className="font-black text-sm sm:text-base mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+                Latest Field Reports ({reports.length})
+              </h2>
+              {reports.length === 0 ? (
+                <p className="text-xs text-slate-500 py-4 text-center">No community reports submitted yet.</p>
+              ) : (
+                <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                  {reports.map((report) => (
+                    <div key={report.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-blue-600" />
+                          {report.hazard} — {report.severity}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                          {report.verification_status || "Pending"}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-300">{report.description}</p>
+                      {report.evidence_data && <img src={report.evidence_data} alt="Submitted field evidence" className="mt-2 h-28 w-full max-w-xs object-cover rounded-xl border border-slate-200 dark:border-slate-700" />}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                        <span>Reported by: <strong>{report.reporter_name || "Citizen"}</strong></span>
+                        <span>{report.created_at ? new Date(report.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         </div>
-        <div className="mt-5"><Disclaimer text="Reports and alerts are demo decision-support records. Never use this page as a substitute for official emergency services or verified authority instructions." /></div>
+        <div className="mt-6"><Disclaimer text="Citizen reports directly sync with the AASRA Government Command Operations Dashboard for NDRF/SDMA ground validation." /></div>
       </div>
     </div>
   );
