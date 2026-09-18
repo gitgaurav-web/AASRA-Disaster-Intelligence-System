@@ -48,7 +48,7 @@ export default function LiveRiskInspector({ habitation, onClose }) {
         <div className="flex-1 flex flex-col items-center justify-center text-amber-400 space-y-2 font-mono text-sm">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
           <p>Querying Open-Meteo & USGS APIs...</p>
-          <p className="text-xs text-slate-500">Running Random Forest ML Inference</p>
+          <p className="text-xs text-slate-500">Running XGBoost inference against the Random Forest baseline</p>
         </div>
       ) : telemetry && telemetry.ml_ai_engine ? (
         <div className="mt-6 space-y-6">
@@ -67,6 +67,12 @@ export default function LiveRiskInspector({ habitation, onClose }) {
             <div className="mt-3 text-xs text-slate-400 font-mono">
               Engine: {telemetry.ml_ai_engine.model}
             </div>
+            {telemetry.ml_ai_engine.baseline && (
+              <div className="mt-2 text-xs text-slate-400 font-mono">
+                RF baseline: {telemetry.ml_ai_engine.baseline.predicted_risk_level}
+                {" "}({(telemetry.ml_ai_engine.baseline.confidence * 100).toFixed(1)}%)
+              </div>
+            )}
           </div>
 
           {/* Evaluated Threats */}

@@ -13,6 +13,7 @@ import math
 import sqlite3
 import time
 import urllib.request
+from datetime import datetime
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
@@ -926,22 +927,47 @@ def get_live_multi_hazard(lat: float, lon: float):
         threats.append("Normal atmospheric and seismic telemetry within safe thresholds.")
 
     prediction = "Moderate"
-    model_label = "Trained Random Forest Multi-Hazard Classifier"
+    model_label = "XGBoost Multi-Hazard Classifier (RF baseline)"
+    ml_prediction = None
     
     try:
         if ml_model_available():
-            hazard_exposure_val = float(precipitation * 2.0 + wind_speed)
-            population_val = 1500
-            
+            event_date = datetime.now()
+            is_india = (6.0 <= float(lat) <= 38.0 and 68.0 <= float(lon) <= 98.0)
+            country_val = "India" if is_india else "Unknown"
+            subregion_val = "Southern Asia" if is_india else "Unknown"
+            region_val = "Asia" if is_india else "Unknown"
+
+            if precipitation > 20.0:
+                disaster_type_val = "Flood"
+                disaster_sub_val = "Riverine flood"
+                mag_val = float(precipitation * 100.0)
+                scale_val = "Km2"
+            else:
+                disaster_type_val = "Storm"
+                disaster_sub_val = "Tropical cyclone" if wind_speed > 60.0 else "Convective storm"
+                mag_val = float(wind_speed)
+                scale_val = "Kph"
+
             ml_prediction = predict_risk_ml(
-                hazard_exposure=hazard_exposure_val,
-                vulnerability="High",
-                population=population_val,
-                accessibility="Restricted"
+                disaster_type=disaster_type_val,
+                disaster_subtype=disaster_sub_val,
+                country=country_val,
+                subregion=subregion_val,
+                region=region_val,
+                magnitude=mag_val,
+                magnitude_scale=scale_val,
+                start_year=event_date.year,
+                start_month=event_date.month,
+                start_day=event_date.day,
+                latitude=float(lat),
+                longitude=float(lon),
             )
             if ml_prediction:
-                prediction = ml_prediction
+                prediction = ml_prediction["predicted_risk_level"]
+                model_label = ml_prediction["model"]
         else:
+            model_label = "Rule-based fallback (ML artifacts unavailable)"
             if precipitation > 30.0 or wind_speed > 50.0:
                 prediction = "Critical"
             elif precipitation > 15.0 or wind_speed > 35.0:
@@ -950,12 +976,20 @@ def get_live_multi_hazard(lat: float, lon: float):
                 prediction = "Low"
     except Exception as ml_err:
         print(f"ML Inference fallback triggered: {ml_err}")
+        model_label = "Rule-based fallback (ML inference error)"
 
     return {
         "ml_ai_engine": {
             "prediction": prediction,
             "model": model_label,
-            "confidence": "96.7%"
+            "confidence": (
+                f"{ml_prediction['confidence']:.1%}"
+                if ml_prediction else "N/A"
+            ),
+            "baseline": (
+                ml_prediction.get("baseline")
+                if ml_prediction else None
+            ),
         },
         "evaluated_threats": threats,
         "live_telemetry": {

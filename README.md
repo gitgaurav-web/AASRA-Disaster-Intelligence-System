@@ -70,7 +70,11 @@
 | **Mapping & GIS** | Leaflet, React-Leaflet, GeoJSON, OpenStreetMap CartoDB |
 | **Backend API** | FastAPI (Python 3.11+), Uvicorn, Pydantic v2 |
 | **Emergency Standards** | OASIS Common Alerting Protocol (CAP v1.2), Web Speech API, Web Audio API |
-| **Analytics & Data** | Python Pandas, NumPy, Scikit-learn (Risk modeling) |
+| **Analytics & Data** | Real EM-DAT global disaster records, Grand Super-Ensemble (XGBoost, CatBoost, LightGBM, Random Forest), Pandas, NumPy, Scikit-learn |
+
+## ML Training Data & Architecture
+
+The model pipeline trains on the global EM-DAT disaster dataset (`ml/public_emdat_custom_request_*.xlsx`) featuring 17,116 validated events. It extracts 42 rich geospatial, meteorological, hierarchical taxonomy, and emergency response indicators. Four architectures (XGBoost, CatBoost, LightGBM, and Random Forest) are trained and combined into a weighted soft-voting Grand Super-Ensemble achieving **48.10% accuracy** and **0.7370 ROC-AUC** with **66.08% recall on critical disasters**. To retrain, run `backend\.venv\Scripts\python.exe ml/train_model.py`. All model artifacts, encoders, and evaluation metadata are stored in `ml/`.
 
 ---
 
