@@ -1,9 +1,8 @@
-﻿name: Deploy DIASTRA Web Portal to GitHub Pages
+﻿name: Deploy AASRA Platform to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +12,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
@@ -25,7 +24,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -34,21 +33,21 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build Web Application
-        run: npm run build
+      - name: Build AASRA for GitHub Pages
         env:
           GITHUB_ACTIONS: "true"
-
-      - name: Setup SPA 404 Fallback
-        run: cp dist/index.html dist/404.html
+          VITE_BASE_URL: /${{ github.event.repository.name }}/
+        run: |
+          npm run build
+          cp dist/index.html dist/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload Pages Artifact
+      - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dist'
+          path: './dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

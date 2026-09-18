@@ -43,6 +43,7 @@ import {
   generateCAPAlertXML,
   downloadCAPAlertFile,
 } from '@/services/notificationService';
+import { HABITATIONS } from '@/data/demoData';
 
 export default function EmergencyAlerts() {
   const [permission, setPermission] = useState('default');
@@ -136,13 +137,16 @@ export default function EmergencyAlerts() {
   const loadHabitations = async () => {
     try {
       let res = await fetch('/api/habitations').catch(() => null);
-      if (!res || !res.ok) res = await fetch('http://127.0.0.1:8000/api/habitations');
-      if (res.ok) {
+      if (!res || !res.ok) res = await fetch('http://127.0.0.1:8000/api/habitations').catch(() => null);
+      if (res && res.ok) {
         const data = await res.json();
-        setHabitations(Array.isArray(data) ? data : []);
+        setHabitations(Array.isArray(data) && data.length > 0 ? data : HABITATIONS);
+      } else {
+        setHabitations(HABITATIONS);
       }
     } catch (err) {
-      console.warn('Could not load habitations for audience calculation:', err);
+      console.warn('Using offline habitations for audience calculation:', err);
+      setHabitations(HABITATIONS);
     }
   };
 

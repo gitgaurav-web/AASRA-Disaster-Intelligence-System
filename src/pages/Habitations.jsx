@@ -21,6 +21,7 @@ import {
   CapacityBadge,
   StatusBadge,
 } from "@/components/Badges";
+import { HABITATIONS } from "@/data/demoData";
 
 const COLUMNS = [
   { key: "name", label: "Habitation", sortable: true },
@@ -127,14 +128,17 @@ export default function Habitations() {
       setError("");
       let res = await fetch("/api/habitations").catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch("http://127.0.0.1:8000/api/habitations");
+        res = await fetch("http://127.0.0.1:8000/api/habitations").catch(() => null);
       }
-      if (!res.ok) throw new Error("Failed to fetch habitations");
-      const data = await res.json();
-      setHabitations(Array.isArray(data) ? data : []);
+      if (res && res.ok) {
+        const data = await res.json();
+        setHabitations(Array.isArray(data) && data.length > 0 ? data : HABITATIONS);
+      } else {
+        setHabitations(HABITATIONS);
+      }
     } catch (err) {
-      console.error(err);
-      setError("Unable to load habitations from backend database.");
+      console.warn("Using offline habitations data:", err);
+      setHabitations(HABITATIONS);
     } finally {
       setLoading(false);
     }

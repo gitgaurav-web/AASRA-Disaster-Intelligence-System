@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import MapView from "@/components/MapView";
 import { StatusBadge } from "@/components/Badges";
+import { RELOCATION_SITES, HABITATIONS } from "@/data/demoData";
 
 export default function RelocationSites() {
   const [sites, setSites] = useState([]);
@@ -99,22 +100,29 @@ export default function RelocationSites() {
       ]);
 
       if (!sitesRes || !sitesRes.ok) {
-        sitesRes = await fetch("http://127.0.0.1:8000/api/relocation-sites");
+        sitesRes = await fetch("http://127.0.0.1:8000/api/relocation-sites").catch(() => null);
       }
-      if (!sitesRes.ok) throw new Error("Failed to load relocation sites");
-      const sitesData = await sitesRes.json();
-      setSites(Array.isArray(sitesData) ? sitesData : []);
-
       if (!habsRes || !habsRes.ok) {
         habsRes = await fetch("http://127.0.0.1:8000/api/habitations").catch(() => null);
       }
+
+      if (sitesRes && sitesRes.ok) {
+        const sitesData = await sitesRes.json();
+        setSites(Array.isArray(sitesData) && sitesData.length > 0 ? sitesData : RELOCATION_SITES);
+      } else {
+        setSites(RELOCATION_SITES);
+      }
+
       if (habsRes && habsRes.ok) {
         const habsData = await habsRes.json();
-        setAtRiskHabitations(Array.isArray(habsData) ? habsData : []);
+        setAtRiskHabitations(Array.isArray(habsData) && habsData.length > 0 ? habsData : HABITATIONS);
+      } else {
+        setAtRiskHabitations(HABITATIONS);
       }
     } catch (err) {
-      console.error(err);
-      setError("Unable to load relocation sites data from backend database.");
+      console.warn("Using offline relocation sites data:", err);
+      setSites(RELOCATION_SITES);
+      setAtRiskHabitations(HABITATIONS);
     } finally {
       setLoading(false);
     }

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { RiskBadge, PriorityBadge } from "@/components/Badges";
 import MapView from "@/components/MapView";
+import { HABITATIONS } from "@/data/demoData";
 
 export default function HabitationDetails() {
   const { id } = useParams();
@@ -70,32 +71,54 @@ export default function HabitationDetails() {
       setError("");
       let res = await fetch(`/api/habitations/${id}`).catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch(`http://127.0.0.1:8000/api/habitations/${id}`);
+        res = await fetch(`http://127.0.0.1:8000/api/habitations/${id}`).catch(() => null);
       }
-      if (!res.ok) throw new Error("Could not load habitation details");
-      const data = await res.json();
-      setHabitation(data);
+      if (res && res.ok) {
+        const data = await res.json();
+        setHabitation(data);
+      } else {
+        const found = HABITATIONS.find(h => String(h.id) === String(id) || h.name.toLowerCase() === String(id).toLowerCase()) || HABITATIONS[0];
+        setHabitation(found);
+      }
     } catch (err) {
-      console.error(err);
-      setError("Unable to connect to backend service.");
+      console.warn("Using offline habitation details:", err);
+      const found = HABITATIONS.find(h => String(h.id) === String(id) || h.name.toLowerCase() === String(id).toLowerCase()) || HABITATIONS[0];
+      setHabitation(found);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch Live Weather Telemetry (Open-Meteo via FastAPI)
+  // Fetch Live Weather Telemetry (Open-Meteo via FastAPI or offline fallback)
   const loadWeather = async () => {
     try {
       let res = await fetch(`/api/weather/live/${id}`).catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch(`http://127.0.0.1:8000/api/weather/live/${id}`);
+        res = await fetch(`http://127.0.0.1:8000/api/weather/live/${id}`).catch(() => null);
       }
-      if (res.ok) {
+      if (res && res.ok) {
         const wData = await res.json();
         setWeather(wData);
+      } else {
+        setWeather({
+          temperature: 24.2,
+          precipitation: 12.5,
+          wind_speed: 18.0,
+          relative_humidity: 78,
+          cloud_cover: 65,
+          condition: 'Overcast with Rain',
+        });
       }
     } catch (err) {
-      console.error("Live weather fetch failed", err);
+      console.warn("Using offline weather fallback", err);
+      setWeather({
+        temperature: 24.2,
+        precipitation: 12.5,
+        wind_speed: 18.0,
+        relative_humidity: 78,
+        cloud_cover: 65,
+        condition: 'Overcast with Rain',
+      });
     }
   };
 

@@ -14,6 +14,7 @@ import {
   Filter,
   Lock,
 } from "lucide-react";
+import { HABITATIONS, RELOCATION_SITES } from "@/data/demoData";
 
 import {
   PieChart,
@@ -103,6 +104,65 @@ export default function Analytics() {
 
   const isNational = !districtScope;
 
+  const getFallbackAnalytics = (habs = HABITATIONS, sites = RELOCATION_SITES) => {
+    const total_habitations = habs.length;
+    const total_population = habs.reduce((acc, h) => acc + Number(h.population || 0), 0);
+    const critical = habs.filter((h) => (h.risk_level || h.riskLevel) === "Critical").length;
+    const high = habs.filter((h) => (h.risk_level || h.riskLevel) === "High").length;
+    const moderate = habs.filter((h) => (h.risk_level || h.riskLevel) === "Moderate").length;
+    const low = habs.filter((h) => (h.risk_level || h.riskLevel) === "Low").length;
+
+    const population_at_risk = habs
+      .filter((h) => (h.risk_level || h.riskLevel) === "Critical" || (h.risk_level || h.riskLevel) === "High")
+      .reduce((acc, h) => acc + Number(h.population || 0), 0);
+    const capacity_deficit = habs.reduce((acc, h) => acc + Number(h.capacity_deficit || h.capacityDeficit || 0), 0);
+
+    const immediate_relocation = habs.filter((h) => (h.priority) === "Immediate").length;
+    const short_term_relocation = habs.filter((h) => (h.priority) === "Short-Term").length;
+    const medium_term_relocation = habs.filter((h) => (h.priority) === "Medium-Term").length;
+    const monitor = habs.filter((h) => (h.priority) === "Monitor").length;
+
+    const total_capacity = sites.reduce((acc, s) => acc + Number(s.capacity || 0), 0);
+    const occupied = sites.reduce((acc, s) => acc + Number(s.occupancy || 0), 0);
+    const available = sites.reduce((acc, s) => acc + Number(s.available || 0), 0);
+
+    const hazard_distribution = {};
+    habs.forEach((h) => {
+      const hz = h.hazard || "Flood";
+      hazard_distribution[hz] = (hazard_distribution[hz] || 0) + 1;
+    });
+
+    return {
+      summary: {
+        total_habitations,
+        total_population,
+        population_at_risk,
+        critical_red_zones: critical,
+        capacity_deficit,
+        immediate_relocation,
+      },
+      risk_distribution: {
+        Critical: critical,
+        High: high,
+        Moderate: moderate,
+        Low: low,
+      },
+      relocation_distribution: {
+        Immediate: immediate_relocation,
+        "Short-Term": short_term_relocation,
+        "Medium-Term": medium_term_relocation,
+        Monitor: monitor,
+      },
+      hazard_distribution,
+      relocation_capacity: {
+        total_capacity,
+        occupied,
+        available,
+        sites: sites.length,
+      },
+    };
+  };
+
   const loadAnalytics = async () => {
     try {
       setLoading(true);
@@ -110,23 +170,28 @@ export default function Analytics() {
 
       let res = await fetch("/api/analytics").catch(() => null);
       if (!res || !res.ok) {
-        res = await fetch("http://127.0.0.1:8000/api/analytics");
+        res = await fetch("http://127.0.0.1:8000/api/analytics").catch(() => null);
       }
-      if (!res.ok) throw new Error("Failed to load analytics");
-      const result = await res.json();
+      
+      let result = null;
+      if (res && res.ok) {
+        result = await res.json();
+      } else {
+        result = getFallbackAnalytics();
+      }
       setData(result);
 
       let habRes = await fetch("/api/habitations").catch(() => null);
       if (!habRes || !habRes.ok) {
-        habRes = await fetch("http://127.0.0.1:8000/api/habitations");
+        habRes = await fetch("http://127.0.0.1:8000/api/habitations").catch(() => null);
       }
-      const allHabs = habRes && habRes.ok ? await habRes.json() : [];
+      const allHabs = habRes && habRes.ok ? await habRes.json() : HABITATIONS;
 
       let siteRes = await fetch("/api/relocation-sites").catch(() => null);
       if (!siteRes || !siteRes.ok) {
-        siteRes = await fetch("http://127.0.0.1:8000/api/relocation-sites");
+        siteRes = await fetch("http://127.0.0.1:8000/api/relocation-sites").catch(() => null);
       }
-      const allSites = siteRes && siteRes.ok ? await siteRes.json() : [];
+      const allSites = siteRes && siteRes.ok ? await siteRes.json() : RELOCATION_SITES;
 
       if (districtScope) {
         const dLower = districtScope.toLowerCase();
@@ -150,15 +215,15 @@ export default function Analytics() {
         const medReloc = dHabs.filter((h) => h.priority === "Medium-Term").length;
         const monReloc = dHabs.filter((h) => h.priority === "Monitor").length;
 
+        const totalSiteCap = dSites.reduce((acc, s) => acc + Number(s.capacity || 0), 0);
+        const occSiteCap = dSites.reduce((acc, s) => acc + Number(s.occupancy || 0), 0);
+        const availSiteCap = dSites.reduce((acc, s) => acc + Number(s.available || 0), 0);
+
         const hazardDist = {};
         dHabs.forEach((h) => {
           const hz = h.hazard || "Unknown";
           hazardDist[hz] = (hazardDist[hz] || 0) + 1;
         });
-
-        const totalSiteCap = dSites.reduce((acc, s) => acc + Number(s.capacity || 0), 0);
-        const occSiteCap = dSites.reduce((acc, s) => acc + Number(s.occupancy || 0), 0);
-        const availSiteCap = dSites.reduce((acc, s) => acc + Number(s.available || 0), 0);
 
         setScopedAnalytics({
           summary: {
@@ -193,8 +258,8 @@ export default function Analytics() {
         setScopedAnalytics(null);
       }
     } catch (err) {
-      console.error(err);
-      setError("Unable to load real-time analytics from backend.");
+      console.warn("Using offline analytics fallback:", err);
+      setData(getFallbackAnalytics());
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,7 @@ import {
   Lock,
   Layers,
 } from 'lucide-react';
-import { DISASTER_INFO } from '@/data/demoData';
+import { DISASTER_INFO, HABITATIONS } from '@/data/demoData';
 
 const ICON_MAP = { Waves, Mountain, Wind };
 
@@ -65,14 +65,17 @@ export default function DisasterInformation() {
       try {
         let res = await fetch('/api/habitations').catch(() => null);
         if (!res || !res.ok) {
-          res = await fetch('http://127.0.0.1:8000/api/habitations');
+          res = await fetch('http://127.0.0.1:8000/api/habitations').catch(() => null);
         }
         if (res && res.ok) {
           const data = await res.json();
-          setHabitations(Array.isArray(data) ? data : []);
+          setHabitations(Array.isArray(data) && data.length > 0 ? data : HABITATIONS);
+        } else {
+          setHabitations(HABITATIONS);
         }
       } catch (e) {
-        console.error('Habitations telemetry fetch failed', e);
+        console.warn('Using offline habitations data:', e);
+        setHabitations(HABITATIONS);
       }
     }
     loadData();
