@@ -49,44 +49,47 @@ const ROLES = [
 
 function RoleSwitcherDropdown({ currentRole, onSelectRole, onClose }) {
   return (
-    <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 p-2 animate-in fade-in zoom-in duration-100">
-      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Select Command Jurisdiction
-        </p>
-      </div>
-      <div className="space-y-1">
-        {ROLES.map((role) => {
-          const Icon = role.icon;
-          const isSelected = currentRole === role.id;
-          return (
-            <button
-              key={role.id}
-              onClick={() => {
-                onSelectRole(role.id);
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                isSelected
-                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold'
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-md ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                  <Icon className="w-4 h-4" />
+    <>
+      <div className="fixed inset-0 z-[60] bg-slate-900/20 backdrop-blur-sm sm:hidden" onClick={onClose} />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm sm:absolute sm:top-auto sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 sm:mt-2 sm:w-72 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-[70] p-2 animate-in fade-in zoom-in duration-200">
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Select Command Jurisdiction
+          </p>
+        </div>
+        <div className="space-y-1">
+          {ROLES.map((role) => {
+            const Icon = role.icon;
+            const isSelected = currentRole === role.id;
+            return (
+              <button
+                key={role.id}
+                onClick={() => {
+                  onSelectRole(role.id);
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between p-3 sm:p-2.5 rounded-xl sm:rounded-lg text-left transition ${
+                  isSelected
+                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-1.5 rounded-md ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                    <Icon className="w-5 h-5 sm:w-4 sm:h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm sm:text-xs font-bold leading-tight">{role.name}</p>
+                    <p className="text-xs sm:text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5">{role.subtitle}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold leading-tight">{role.name}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5">{role.subtitle}</p>
-                </div>
-              </div>
-              {isSelected && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-            </button>
-          );
-        })}
+                {isSelected && <Check className="w-5 h-5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -477,23 +480,26 @@ export default function Navbar() {
                     </button>
 
                     {userDropdown && (
-                      <div className="absolute right-0 mt-2 w-56 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-800 p-2 z-50">
-                        <div className="px-3 py-2 border-b border-slate-800">
-                          <p className="text-xs font-bold">{authUser.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{authUser.email}</p>
-                          <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-900/60 text-blue-300 font-semibold text-[9px] rounded">
-                            {authUser.designation}
-                          </span>
-                        </div>
-                        <button
-                          onClick={handleGovLogout}
-                          className="w-full mt-1.5 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                          {t('gov_sign_out')}
-                        </button>
-                      </div>
-                    )}
+                <>
+                  <div className="fixed inset-0 z-[60] bg-slate-900/20 backdrop-blur-sm sm:hidden" onClick={() => setUserDropdown(false)} />
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm sm:absolute sm:top-auto sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 sm:mt-2 sm:w-56 bg-slate-900 text-white rounded-2xl sm:rounded-xl shadow-2xl border border-slate-700 sm:border-slate-800 p-2 z-[70]">
+                    <div className="px-3 py-3 sm:py-2 border-b border-slate-800">
+                      <p className="text-sm sm:text-xs font-bold">{authUser.name}</p>
+                      <p className="text-xs sm:text-[10px] text-slate-400 truncate">{authUser.email}</p>
+                      <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-900/60 text-blue-300 font-semibold text-[9px] rounded">
+                        {authUser.designation}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleGovLogout}
+                      className="w-full mt-1.5 flex items-center gap-2 px-3 py-3 sm:py-2 text-sm sm:text-xs font-semibold text-rose-400 hover:bg-rose-950/40 rounded-xl sm:rounded-lg transition"
+                    >
+                      <LogOut className="w-5 h-5 sm:w-3.5 sm:h-3.5" />
+                      {t('gov_sign_out')}
+                    </button>
+                  </div>
+                </>
+              )}
                   </div>
                 ) : (
                   <Link

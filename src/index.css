@@ -8,6 +8,15 @@
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     max-width: 100%;
+    overscroll-behavior-x: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
