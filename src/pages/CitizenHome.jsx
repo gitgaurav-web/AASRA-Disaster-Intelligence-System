@@ -133,8 +133,8 @@ export default function CitizenHome() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16">
       
-      {/* 24x7 Helpline Ticker */}
-      <div className="bg-red-700 text-white px-4 py-2 text-xs font-semibold shadow-inner">
+      {/* 24x7 Helpline Ticker (Desktop only - mobile has bottom nav & fast dial card) */}
+      <div className="hidden md:block bg-red-700 text-white px-4 py-2 text-xs font-semibold shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 rounded-full bg-white animate-ping" />
@@ -157,53 +157,53 @@ export default function CitizenHome() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-blue-900 via-indigo-950 to-slate-900 text-white pt-12 pb-16 px-4 sm:px-6 border-b border-slate-800">
+      <section className="relative overflow-hidden bg-gradient-to-b from-blue-900 via-indigo-950 to-slate-900 text-white pt-6 sm:pt-12 pb-10 sm:pb-16 px-4 sm:px-6 border-b border-slate-800">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]" />
         
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
-            <div className="max-w-2xl space-y-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8 sm:gap-10">
+            <div className="max-w-2xl space-y-4 sm:space-y-5 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
                 <Shield className="w-3.5 h-3.5 text-blue-400" />
                 <span>{t('citizen_hero_tag')}</span>
               </div>
               
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-snug sm:leading-tight">
                 {t('citizen_hero_h1_1')} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-sky-300 to-emerald-300">
                   {t('citizen_hero_h1_2')}
                 </span>
               </h1>
               
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-base text-slate-300 leading-relaxed max-w-xl mx-auto sm:mx-0">
                 {t('citizen_hero_desc')}
               </p>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              {/* Action Buttons: 2-column on mobile, flex on desktop */}
+              <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap items-center pt-2">
                 <Link
                   to="/community-reports"
-                  className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/30 flex items-center gap-2 transition active:scale-95"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 sm:px-5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/30 transition active:scale-95 text-center"
                 >
-                  <AlertTriangle className="w-4 h-4 animate-bounce" />
-                  <span>{t('btn_report_sos')}</span>
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 animate-bounce" />
+                  <span className="truncate">{t('btn_report_sos')}</span>
                 </Link>
                 <Link
                   to="/risk-map"
-                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition active:scale-95"
+                  className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 sm:px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-600/30 transition active:scale-95 text-center"
                 >
-                  <MapPin className="w-4 h-4" />
-                  <span>{t('btn_find_shelter')}</span>
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{t('btn_find_shelter')}</span>
                 </Link>
                 {citizenUser ? (
-                  <div className="px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Logged in as: <strong className="text-white">{citizenUser.name}</strong></span>
+                  <div className="col-span-2 sm:col-span-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs text-slate-300 flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span className="truncate">Logged in: <strong className="text-white">{citizenUser.name}</strong></span>
                   </div>
                 ) : (
                   <Link
                     to="/citizen-login"
-                    className="px-4 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 flex items-center gap-2 transition"
+                    className="hidden sm:flex px-4 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 items-center gap-2 transition"
                   >
                     <span>{t('nav_citizen_login')}</span>
                     <ChevronRight className="w-4 h-4" />
@@ -212,8 +212,8 @@ export default function CitizenHome() {
               </div>
             </div>
 
-            {/* Quick SOS Call Card with Tap to Call */}
-            <div className="w-full lg:w-96 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700 p-6 shadow-2xl space-y-4">
+            {/* Quick SOS Call Card with Sleek Green Dial Buttons */}
+            <div className="w-full lg:w-96 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700/90 p-4 sm:p-6 shadow-2xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-red-500/20 text-red-400 rounded-lg">
@@ -234,24 +234,25 @@ export default function CitizenHome() {
                   <button
                     key={h.number}
                     onClick={() => triggerCall(h)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 transition group text-left active:scale-[0.98]"
+                    className="w-full flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700/80 transition group text-left active:scale-[0.98]"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`px-2 py-1 rounded-md text-xs font-black ${h.color} shadow-sm`}>
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <div className={`w-11 sm:w-12 h-9 rounded-lg flex items-center justify-center text-xs font-black ${h.color} shadow-sm flex-shrink-0`}>
                         {h.number}
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-200 group-hover:text-white flex items-center gap-1.5">
-                          <span>{h.label}</span>
-                          <span className="text-[9px] bg-red-500/20 text-red-300 px-1 py-0.2 rounded font-mono font-bold">
-                            TAP TO CALL
-                          </span>
+                      <div className="min-w-0 pr-2">
+                        <p className="text-xs sm:text-sm font-bold text-slate-100 group-hover:text-white truncate">
+                          {h.label}
                         </p>
-                        <p className="text-[10px] text-slate-400">{h.desc}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+                          {h.desc}
+                        </p>
                       </div>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-slate-700 group-hover:bg-emerald-600 text-slate-300 group-hover:text-white transition">
-                      <PhoneCall className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition shadow-sm">
+                        <PhoneCall className="w-3.5 h-3.5" />
+                      </div>
                     </div>
                   </button>
                 ))}

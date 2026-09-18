@@ -21,7 +21,7 @@ export default function MobileBottomNav() {
   // On government command desktop screens, let the standard navbar handle controls
   if (isGovPath) {
     return (
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 flex items-center justify-between text-xs text-white shadow-2xl">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 pb-[max(env(safe-area-inset-bottom),_24px)] flex items-center justify-between text-xs text-white shadow-2xl">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-4 h-4 text-amber-400" />
           <span className="font-bold text-[11px] tracking-wide">AASRA GOV COMMAND</span>
@@ -69,7 +69,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1.5 transition-colors"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1.5 pb-[max(env(safe-area-inset-bottom),_24px)] transition-colors"
       aria-label="Mobile Bottom Navigation"
     >
       <div className="max-w-md mx-auto flex items-center justify-around">

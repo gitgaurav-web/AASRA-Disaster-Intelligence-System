@@ -276,7 +276,7 @@ export default function Navbar() {
     return (
       <header className="sticky top-0 z-50 shadow-xl font-sans">
         {/* Official Apex Header: National Emblem + Ministry of Home Affairs + NDMA */}
-        <div className="bg-[#0b1b33] text-white px-4 sm:px-6 py-2 border-b border-slate-700/80">
+        <div className="bg-[#0b1b33] text-white px-4 sm:px-6 py-2 pt-[max(env(safe-area-inset-top),_32px)] md:pt-2 border-b border-slate-700/80">
           <div className="max-w-[1750px] mx-auto flex flex-wrap items-center justify-between gap-4">
             
             {/* Left: National Seal & Official Identity */}
@@ -592,8 +592,8 @@ export default function Navbar() {
   // =========================================================================
   return (
     <header className="sticky top-0 z-50 shadow-sm font-sans">
-      {/* Citizen Top Strip: Interactive Helpline with Direct Calling */}
-      <div className="bg-red-700 text-white px-4 py-1.5 text-xs font-semibold shadow-inner">
+      {/* Citizen Top Strip: Interactive Helpline with Direct Calling (Desktop only - mobile has bottom nav) */}
+      <div className="hidden md:block bg-red-700 text-white px-4 py-1.5 text-xs font-semibold shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
@@ -625,19 +625,24 @@ export default function Navbar() {
       </div>
 
       {/* Main Citizen Navbar: Only Citizen Links, NO Gov Prompts */}
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors pt-[env(safe-area-inset-top,0px)]">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             
             {/* Citizen Portal Logo */}
-            <Link to="/" className="flex items-center gap-3 flex-shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 flex items-center justify-center p-1 shadow-sm">
-                <Logo className="w-8 h-8" variant="light" />
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 flex items-center justify-center p-1 shadow-sm">
+                <Logo className="w-7 h-7 sm:w-8 sm:h-8" variant="light" />
               </div>
               <div>
-                <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none block">
-                  AASRA
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                    AASRA
+                  </span>
+                  <span className="md:hidden text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono">
+                    LIVE
+                  </span>
+                </div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block leading-tight mt-0.5">
                   {t('citizen_portal_title')}
                 </span>
@@ -668,14 +673,14 @@ export default function Navbar() {
             </div>
 
             {/* Right Actions: All-India Multi-Language Dropdown, Theme Toggle, Citizen Login */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {/* All-India Language Dropdown */}
               <LanguageDropdown variant="citizen" />
 
               {/* Theme toggle */}
               <button
                 onClick={handleToggleTheme}
-                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 sm:p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 title="Toggle Theme"
               >
                 {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
@@ -685,16 +690,16 @@ export default function Navbar() {
               {citizenUser ? (
                 <Link
                   to="/citizen-login"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition"
                 >
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <span className="hidden sm:inline">{citizenUser.name.split(' ')[0]}</span>
-                  <span className="sm:hidden">{t('nav_profile')}</span>
+                  <span className="sm:hidden text-[11px]">{t('nav_profile')}</span>
                 </Link>
               ) : (
                 <Link
                   to="/citizen-login"
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition"
+                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition"
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>{t('nav_citizen_login')}</span>
