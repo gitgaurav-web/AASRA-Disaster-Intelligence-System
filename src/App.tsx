@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { DemoBanner } from '@/components/Layout';
 import { LanguageProvider } from '@/context/LanguageContext';
 
@@ -47,7 +48,7 @@ function App() {
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200 overflow-x-hidden w-full">
           <DemoBanner />
           <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 pb-16 md:pb-0">
           <Routes>
             {/* ==========================================
                 1. CITIZEN PUBLIC SAFETY PORTAL
@@ -98,6 +99,7 @@ function App() {
           </Routes>
         </main>
         <Footer />
+        <MobileBottomNav />
       </div>
     </BrowserRouter>
   </LanguageProvider>

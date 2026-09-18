@@ -5,6 +5,11 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AASRA — Disaster Risk Intelligence & Public Safety Portal</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f2444" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AASRA" />
     <script type="text/javascript">
       // GitHub Pages SPA redirect receiver (https://github.com/rafgraph/spa-github-pages)
       (function(l) {
@@ -16,7 +21,14 @@
               l.pathname.slice(0, -1) + decoded + l.hash
           );
         }
-      }(window.location))
+      }(window.location));
+
+      // Register PWA Service Worker if supported
+      if ('serviceWorker' in navigator && !window.location.host.includes('localhost:5173')) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(function() {});
+        });
+      }
     </script>
   </head>
   <body class="antialiased selection:bg-blue-600 selection:text-white">

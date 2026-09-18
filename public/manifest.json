@@ -1,0 +1,24 @@
+﻿{
+  "short_name": "AASRA",
+  "name": "AASRA Citizen Safety & Disaster Alert Portal",
+  "description": "Real-time multi-hazard early warnings, shelter discovery, and GPS SOS reporting network.",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/aasra-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0f2444",
+  "background_color": "#09172c",
+  "orientation": "portrait-primary",
+  "categories": ["weather", "news", "utilities", "government"]
+}

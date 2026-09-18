@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AASRA Citizen Safety</string>
+    <string name="title_activity_main">AASRA Citizen Safety</string>
+    <string name="package_name">in.gov.ndma.aasra</string>
+    <string name="custom_url_scheme">in.gov.ndma.aasra</string>
+</resources>
