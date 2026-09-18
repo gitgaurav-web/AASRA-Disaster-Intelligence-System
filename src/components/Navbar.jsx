@@ -596,7 +596,16 @@ export default function Navbar() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/gov"
+              className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-extrabold shadow-sm transition active:scale-95 border border-amber-300"
+              title="Official Government Incident Command Portal"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-slate-950" />
+              <span>🏛️ {t('switch_to_gov')} →</span>
+            </Link>
+
             <a
               href="tel:112"
               className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-red-800/90 hover:bg-red-900 border border-red-500/40 text-[11px] font-bold text-amber-200 transition active:scale-95"
@@ -710,6 +719,16 @@ export default function Navbar() {
                   <span>{t(link.labelKey) || link.fallback}</span>
                 </Link>
               ))}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Link
+                  to="/gov"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40"
+                >
+                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>🏛️ {t('switch_to_gov')}</span>
+                </Link>
+              </div>
             </div>
           )}
         </div>
