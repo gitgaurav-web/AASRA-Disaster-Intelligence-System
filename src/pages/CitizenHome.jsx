@@ -4,9 +4,16 @@ import {
   PhoneCall, Shield, AlertTriangle, MapPin, Radio, CheckCircle2,
   ChevronRight, HeartPulse, LifeBuoy, FileText, Bell, Navigation,
   HelpCircle, Compass, Award, ExternalLink, Activity, PhoneForwarded,
-  Copy, Check, X
+  Copy, Check, X, Waves, Mountain, Wind
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+
+const HAZARD_TABS = [
+  { id: 'Flood', label: 'Flood / बाढ़', icon: Waves, color: 'text-cyan-500' },
+  { id: 'Earthquake', label: 'Earthquake / भूकंप', icon: Activity, color: 'text-amber-500' },
+  { id: 'Landslide', label: 'Landslide / भूस्खलन', icon: Mountain, color: 'text-orange-500' },
+  { id: 'Cyclone', label: 'Cyclone / चक्रवात', icon: Wind, color: 'text-sky-500' },
+];
 
 const HELPLINES = [
   { number: '112', label: 'National Emergency', desc: 'Police, Fire, Medical all-in-one response', color: 'bg-red-650 text-white' },
@@ -131,7 +138,7 @@ export default function CitizenHome() {
   const kitPercent = Math.round((checkedKit.length / SURVIVAL_KIT_ITEMS.length) * 100);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-28 md:pb-16">
       
       {/* 24x7 Helpline Ticker (Desktop only - mobile has bottom nav & fast dial card) */}
       <div className="hidden md:block bg-red-700 text-white px-4 py-2 text-xs font-semibold shadow-inner">
@@ -280,14 +287,14 @@ export default function CitizenHome() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Card 1: Report Hazard */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center shadow-sm">
                   <Radio className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                   {t('card1_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -304,12 +311,12 @@ export default function CitizenHome() {
             </div>
 
             {/* Card 2: Risk Map */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-sm">
                   <Compass className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                   {t('card2_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -325,13 +332,35 @@ export default function CitizenHome() {
               </Link>
             </div>
 
-            {/* Card 3: Citizen Login */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            {/* Card 3: Live Emergency Alerts */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-sm">
+                  <Bell className="w-6 h-6 text-amber-500 animate-pulse" />
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                  Live Emergency Alerts
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Real-time CAP early warnings, active flood bulletins, and official evacuation broadcast alarms.
+                </p>
+              </div>
+              <Link
+                to="/emergency-alerts"
+                className="mt-5 w-full py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 font-bold text-xs flex items-center justify-between transition"
+              >
+                <span>View Live Alerts</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Card 4: Citizen Login */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
                   <Shield className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                   {t('card3_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -466,47 +495,50 @@ export default function CitizenHome() {
             </p>
           </div>
 
-          {/* Hazard Selector Tabs */}
-          <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 pb-3">
-            {Object.keys(DOS_DONTS).map((hazard) => (
+          {/* Hazard Selector Tabs - Horizontally scrollable on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar mb-6 border-b border-slate-200 dark:border-slate-800 pb-3">
+            {HAZARD_TABS.map(({ id, label, icon: Icon, color }) => (
               <button
-                key={hazard}
-                onClick={() => setActiveTab(hazard)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                  activeTab === hazard
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 flex-shrink-0 ${
+                  activeTab === id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
-                {hazard}
+                <Icon className={`w-4 h-4 ${activeTab === id ? 'text-white' : color}`} />
+                <span>{label}</span>
               </button>
             ))}
           </div>
 
           {/* Guidelines Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/40 p-5 space-y-3">
-              <h4 className="text-sm font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> WHAT YOU SHOULD DO (DO'S)
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+            <div className="bg-emerald-50/60 dark:bg-emerald-950/25 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 p-4 sm:p-6 space-y-3.5 shadow-sm">
+              <h4 className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                <span>WHAT YOU SHOULD DO (DO'S)</span>
               </h4>
-              <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
                 {DOS_DONTS[activeTab].dos.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">•</span>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="bg-red-50/50 dark:bg-red-950/20 rounded-xl border border-red-200 dark:border-red-900/40 p-5 space-y-3">
-              <h4 className="text-sm font-black text-red-800 dark:text-red-300 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" /> WHAT YOU MUST AVOID (DON'TS)
+            <div className="bg-red-50/60 dark:bg-red-950/25 rounded-2xl border border-red-200 dark:border-red-900/40 p-4 sm:p-6 space-y-3.5 shadow-sm">
+              <h4 className="text-sm sm:text-base font-black text-red-800 dark:text-red-300 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <span>WHAT YOU MUST AVOID (DON'TS)</span>
               </h4>
-              <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
                 {DOS_DONTS[activeTab].donts.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-red-600 font-bold">•</span>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 flex-shrink-0" />
                     <span>{item}</span>
                   </li>
                 ))}

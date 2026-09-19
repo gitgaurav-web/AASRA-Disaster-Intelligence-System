@@ -38,6 +38,8 @@ const CITIZEN_NAV_LINKS = [
   { to: '/', labelKey: 'nav_home', fallback: 'Home', icon: Home },
   { to: '/community-reports', labelKey: 'nav_community_reports', fallback: 'Community Reports', icon: Radio },
   { to: '/risk-map', labelKey: 'nav_risk_map', fallback: 'Risk Map', icon: Map },
+  { to: '/emergency-alerts', labelKey: 'nav_alerts', fallback: 'Live Alerts', icon: Bell },
+  { to: '/disasters', labelKey: 'nav_disaster_guides', fallback: 'Safety Guidelines', icon: Waves },
 ];
 
 const ROLES = [
@@ -119,9 +121,8 @@ export default function Navbar() {
   const isGovPath =
     location.pathname.startsWith('/gov') ||
     [
-      '/about', '/disasters', '/emergency-alerts', '/habitations',
-      '/capacity', '/relocation', '/relocation-sites', '/rescue-teams',
-      '/analytics', '/resources', '/admin', '/settings'
+      '/habitations', '/capacity', '/relocation', '/relocation-sites',
+      '/rescue-teams', '/analytics', '/resources', '/admin', '/settings'
     ].some((p) => location.pathname === p || location.pathname.startsWith(p + '/'));
 
   const [portalMode, setPortalMode] = useState(() => {
@@ -133,7 +134,17 @@ export default function Navbar() {
     if (isGovPath) {
       setPortalMode('gov');
       localStorage.setItem('aasra_portal_mode', 'gov');
-    } else if (location.pathname === '/' || location.pathname === '/community-reports' || location.pathname === '/citizen-login') {
+    } else if (
+      location.pathname === '/' ||
+      location.pathname === '/community-reports' ||
+      location.pathname === '/risk-map' ||
+      location.pathname === '/citizen-login' ||
+      location.pathname === '/disasters' ||
+      location.pathname === '/disaster-info' ||
+      location.pathname === '/emergency-alerts' ||
+      location.pathname === '/about' ||
+      location.pathname === '/contact'
+    ) {
       setPortalMode('citizen');
       localStorage.setItem('aasra_portal_mode', 'citizen');
     }
@@ -716,28 +727,149 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Citizen Dropdown */}
+          {/* Mobile Citizen Enhanced Menu Drawer */}
           {mobileOpen && (
-            <div className="md:hidden py-3 border-t border-slate-100 dark:border-slate-800 space-y-1">
-              {CITIZEN_NAV_LINKS.map((link) => (
+            <div className="md:hidden py-4 border-t border-slate-200 dark:border-slate-800 space-y-3.5 animate-in fade-in duration-150">
+              {/* Profile Card Banner */}
+              {citizenUser ? (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                      {citizenUser.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{citizenUser.name}</p>
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">{citizenUser.district} • Verified Citizen</p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/citizen-login"
+                    onClick={() => setMobileOpen(false)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow-sm transition active:scale-95"
+                  >
+                    View Pass →
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">Citizen Safety Pass</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Sign in with mobile for SOS tracking</p>
+                  </div>
+                  <Link
+                    to="/citizen-login"
+                    onClick={() => setMobileOpen(false)}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition active:scale-95"
+                  >
+                    Login →
+                  </Link>
+                </div>
+              )}
+
+              {/* Citizen Navigation Links */}
+              <div className="space-y-1">
+                {CITIZEN_NAV_LINKS.map((link) => {
+                  const isActive = location.pathname === link.to;
+                  return (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                        isActive
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <link.icon className={`w-4 h-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`} />
+                        <span>{t(link.labelKey) || link.fallback}</span>
+                      </div>
+                      {link.to === '/community-reports' && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+                          SOS
+                        </span>
+                      )}
+                      {link.to === '/emergency-alerts' && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                          LIVE
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+
                 <Link
-                  key={link.to}
-                  to={link.to}
+                  to="/about"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <link.icon className="w-4 h-4" />
-                  <span>{t(link.labelKey) || link.fallback}</span>
+                  <Info className="w-4 h-4 text-slate-400" />
+                  <span>About AASRA System</span>
                 </Link>
-              ))}
+              </div>
+
+              {/* Fast Emergency Helpline Grid */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                  24x7 Fast Emergency Dial
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href="tel:112"
+                    className="flex items-center justify-between p-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-bold transition active:scale-95"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                      <span>112 All-India</span>
+                    </div>
+                    <span className="text-[9px] px-1 rounded bg-red-200/60 dark:bg-red-900/60 text-red-800 dark:text-red-200">SOS</span>
+                  </a>
+                  <a
+                    href="tel:1070"
+                    className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-bold transition active:scale-95"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-amber-600" />
+                      <span>1070 NDMA</span>
+                    </div>
+                    <span className="text-[9px] px-1 rounded bg-amber-200/60 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">Desk</span>
+                  </a>
+                  <a
+                    href="tel:1077"
+                    className="flex items-center justify-between p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold transition active:scale-95"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
+                      <span>1077 DM Control</span>
+                    </div>
+                    <span className="text-[9px] px-1 rounded bg-blue-200/60 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">Local</span>
+                  </a>
+                  <a
+                    href="tel:108"
+                    className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition active:scale-95"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>108 Ambulance</span>
+                    </div>
+                    <span className="text-[9px] px-1 rounded bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">Medic</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Official Government Switch */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Link
                   to={authUser ? "/gov" : "/gov/login"}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 transition active:scale-95"
                 >
-                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>🏛️ {t('switch_to_gov')}</span>
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>🏛️ {t('switch_to_gov')}</span>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>

@@ -117,7 +117,7 @@ export default function DisasterInformation() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      <div className="max-w-[1300px] mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-[1300px] mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-28 md:pb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <PageHeader
             title="Multi-Hazard Intelligence Hub"

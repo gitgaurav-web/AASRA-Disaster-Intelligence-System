@@ -25,7 +25,7 @@ const RESOURCE_LINKS = [
 export default function Footer() {
   return (
     <footer className="bg-slate-800 text-slate-300 mt-auto">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 sm:py-10 pb-28 md:pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="lg:col-span-1">

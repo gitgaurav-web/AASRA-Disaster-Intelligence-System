@@ -333,7 +333,7 @@ export default function CitizenRiskMap() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-28 md:pb-16">
         {/* 2. PAGE HERO & GOOGLE MAPS POWERED INTRO */}
         <div className="mb-4 sm:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
@@ -702,7 +702,7 @@ export default function CitizenRiskMap() {
                 onSelectShelter={setSelectedShelter}
                 center={mapCenter}
                 zoom={mapZoom}
-                height="650px"
+                height={typeof window !== 'undefined' && window.innerWidth < 640 ? "460px" : "650px"}
                 variant="citizen"
                 userLocation={userLocation}
                 onLocateMe={handleLocateCitizen}

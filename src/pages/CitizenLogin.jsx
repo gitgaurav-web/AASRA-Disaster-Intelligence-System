@@ -108,14 +108,14 @@ export default function CitizenLogin() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-4 sm:px-6 flex items-center justify-center">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-6 sm:py-10 pb-28 md:pb-10 px-4 sm:px-6 flex items-center justify-center">
       <div className="w-full max-w-md space-y-6">
 
         {/* If Citizen is Already Logged In */}
         {citizenUser ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xl space-y-5">
             <div className="text-center pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800 shadow-sm">
                 <ShieldCheck className="w-8 h-8" />
               </div>
               <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
@@ -129,7 +129,7 @@ export default function CitizenLogin() {
               </p>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between">
                 <span className="text-slate-500 dark:text-slate-400">Registered Phone</span>
                 <span className="font-bold text-slate-900 dark:text-white">{citizenUser.phone}</span>
@@ -145,16 +145,23 @@ export default function CitizenLogin() {
             </div>
 
             <div className="space-y-2 pt-2">
+              <a
+                href={`tel:${(citizenUser.emergencyContact || '').replace(/[^\d+]/g, '')}`}
+                className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-red-600/20 transition active:scale-95"
+              >
+                <PhoneCall className="w-4 h-4 animate-pulse" />
+                <span>Call Emergency Contact</span>
+              </a>
               <Link
                 to="/community-reports"
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
               >
                 <FileText className="w-4 h-4" />
                 <span>Submit / View My Hazard Reports</span>
               </Link>
               <Link
                 to="/risk-map"
-                className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95"
               >
                 <MapPin className="w-4 h-4" />
                 <span>Find Safe Shelters in {citizenUser.district}</span>
@@ -162,7 +169,7 @@ export default function CitizenLogin() {
               <button
                 onClick={handleLogout}
                 type="button"
-                className="w-full py-2.5 rounded-xl border border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-bold text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 rounded-xl border border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Log Out of Citizen Portal</span>
