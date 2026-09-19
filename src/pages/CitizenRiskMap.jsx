@@ -812,6 +812,7 @@ export default function CitizenRiskMap() {
                 variant="citizen"
                 userLocation={userLocation}
                 onLocateMe={handleLocateCitizen}
+                isOffline={simulateOffline || !isOnline}
               />
             </div>
 

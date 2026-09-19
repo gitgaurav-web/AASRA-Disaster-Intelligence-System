@@ -25,6 +25,7 @@ import {
   Minus,
   ExternalLink,
   Shield,
+  X,
 } from "lucide-react";
 import LiveRiskInspector from "./LiveRiskInspector";
 import {
@@ -171,13 +172,128 @@ const BASE_MAPS = {
     id: "tacticalOffline",
     name: "Tactical Offline Grid",
     icon: "🛡️",
-    url: "",
+    url: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='%230b1322'/%3E%3Cdefs%3E%3Cpattern id='g32' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 32 0 L 0 0 0 32' fill='none' stroke='%231e293b' stroke-width='0.75'/%3E%3C/pattern%3E%3Cpattern id='g64' width='64' height='64' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 64 0 L 0 0 0 64' fill='none' stroke='%23334155' stroke-width='1.2'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='256' height='256' fill='url(%23g32)'/%3E%3Crect width='256' height='256' fill='url(%23g64)'/%3E%3Cpath d='M 60 64 L 68 64 M 64 60 L 64 68 M 124 128 L 132 128 M 128 124 L 128 132 M 188 192 L 196 192 M 192 188 L 192 196' stroke='%2306b6d4' stroke-width='1.5' stroke-opacity='0.5'/%3E%3Ctext x='8' y='16' font-family='monospace' font-size='9' font-weight='bold' fill='%2364748b'%3EAASRA TACTICAL GRID%3C/text%3E%3C/svg%3E",
     subdomains: [],
     attribution: '&copy; AASRA On-Device Tactical Grid (Zero-Network)',
     maxZoom: 20,
     isOfflineCanvas: true,
   },
 };
+
+// =========================================================================
+// PROCEDURAL ON-DEVICE TACTICAL GRID ENGINE (100% Zero-Network / Offline)
+// =========================================================================
+const OFFLINE_TILE_DATA_URL =
+  "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='%230b1322'/%3E%3Cdefs%3E%3Cpattern id='g32' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 32 0 L 0 0 0 32' fill='none' stroke='%231e293b' stroke-width='0.75'/%3E%3C/pattern%3E%3Cpattern id='g64' width='64' height='64' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 64 0 L 0 0 0 64' fill='none' stroke='%23334155' stroke-width='1.2'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='256' height='256' fill='url(%23g32)'/%3E%3Crect width='256' height='256' fill='url(%23g64)'/%3E%3Cpath d='M 60 64 L 68 64 M 64 60 L 64 68 M 124 128 L 132 128 M 128 124 L 128 132 M 188 192 L 196 192 M 192 188 L 192 196' stroke='%2306b6d4' stroke-width='1.5' stroke-opacity='0.5'/%3E%3Ctext x='8' y='16' font-family='monospace' font-size='9' font-weight='bold' fill='%2364748b'%3EAASRA TACTICAL GRID%3C/text%3E%3C/svg%3E";
+
+const TacticalGridLayer = L.GridLayer.extend({
+  createTile: function (coords) {
+    const tile = document.createElement("canvas");
+    const tileSize = this.getTileSize();
+    tile.width = tileSize.x;
+    tile.height = tileSize.y;
+    const ctx = tile.getContext("2d");
+    if (!ctx) return tile;
+
+    const w = tileSize.x;
+    const h = tileSize.y;
+
+    // 1. Deep tactical military background
+    ctx.fillStyle = "#0c1322";
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Minor grid lines (every 32px)
+    ctx.strokeStyle = "rgba(30, 41, 59, 0.85)";
+    ctx.lineWidth = 0.75;
+    for (let x = 0; x <= w; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= h; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // 3. Major grid lines (every 64px)
+    ctx.strokeStyle = "rgba(51, 65, 85, 0.95)";
+    ctx.lineWidth = 1.25;
+    for (let x = 0; x <= w; x += 64) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= h; y += 64) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // 4. Tactical crosshairs at major intersections
+    ctx.strokeStyle = "rgba(6, 182, 212, 0.55)";
+    ctx.lineWidth = 1.5;
+    for (let x = 64; x < w; x += 64) {
+      for (let y = 64; y < h; y += 64) {
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y);
+        ctx.lineTo(x + 5, y);
+        ctx.moveTo(x, y - 5);
+        ctx.lineTo(x, y + 5);
+        ctx.stroke();
+      }
+    }
+
+    // 5. Geographic coordinates via Spherical Mercator inverse projection
+    const z = coords.z;
+    const n = Math.PI - (2 * Math.PI * coords.y) / Math.pow(2, z);
+    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    const lon = (coords.x / Math.pow(2, z)) * 360 - 180;
+
+    // 6. Tactical Coordinate Label in top-left
+    ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+    ctx.font = "bold 9px monospace";
+    const latStr = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"}`;
+    const lonStr = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
+    ctx.fillText(`${latStr}  ${lonStr}`, 8, 16);
+
+    // 7. Tactical Grid Badge in bottom-right
+    ctx.fillStyle = "rgba(56, 189, 248, 0.55)";
+    ctx.font = "bold 8px sans-serif";
+    ctx.fillText(`AASRA OFFLINE Z${z}`, w - 78, h - 8);
+
+    return tile;
+  },
+});
+
+function TacticalOfflineGrid({ active }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!active) return;
+
+    const layer = new TacticalGridLayer({
+      attribution: "&copy; AASRA On-Device Tactical Grid (Zero-Data Mode)",
+      maxZoom: 20,
+      minZoom: 1,
+      zIndex: 1,
+    });
+
+    layer.addTo(map);
+
+    return () => {
+      try {
+        map.removeLayer(layer);
+      } catch {}
+    };
+  }, [map, active]);
+
+  return null;
+}
 
 // =========================================================================
 // MAP CAMERA & SIZE CONTROLLER (Never resets user zoom unexpectedly)
@@ -241,13 +357,28 @@ export default function MapView({
   variant = "gov", // "gov" | "citizen"
   userLocation = null,
   onLocateMe = null,
+  isOffline = false,
 }) {
-  // Default to Google Roadmap for Citizen, or Google Hybrid / Dark for Gov
-  const [baseMap, setBaseMap] = useState(variant === "gov" ? "googleHybrid" : "googleRoad");
+  const [isOnline, setIsOnline] = useState(
+    () => (typeof navigator !== "undefined" ? navigator.onLine : true)
+  );
+
+  const effectiveOffline = Boolean(isOffline || !isOnline);
+
+  // Default to Google Roadmap for Citizen, Google Hybrid / Dark for Gov, or Tactical Offline if offline
+  const [baseMap, setBaseMap] = useState(() => {
+    if (isOffline || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      return "tacticalOffline";
+    }
+    return variant === "gov" ? "googleHybrid" : "googleRoad";
+  });
+  const lastOnlineBaseMapRef = useRef(variant === "gov" ? "googleHybrid" : "googleRoad");
+
   const [showLayerMenu, setShowLayerMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [indiaBoundary, setIndiaBoundary] = useState(null);
+  const [isHudClosed, setIsHudClosed] = useState(false);
 
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -262,10 +393,6 @@ export default function MapView({
     }
   }, [center, zoom]);
 
-  const [isOnline, setIsOnline] = useState(
-    () => (typeof navigator !== "undefined" ? navigator.onLine : true)
-  );
-
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -277,6 +404,24 @@ export default function MapView({
     };
   }, []);
 
+  // Automatically switch base map to tacticalOffline when disconnected, and restore when reconnected
+  useEffect(() => {
+    if (effectiveOffline) {
+      if (baseMap !== "tacticalOffline") {
+        lastOnlineBaseMapRef.current = baseMap;
+        setBaseMap("tacticalOffline");
+      }
+    } else {
+      if (
+        baseMap === "tacticalOffline" &&
+        lastOnlineBaseMapRef.current &&
+        lastOnlineBaseMapRef.current !== "tacticalOffline"
+      ) {
+        setBaseMap(lastOnlineBaseMapRef.current);
+      }
+    }
+  }, [effectiveOffline]);
+
   // Compute On-Device Red Zones automatically if server data is unavailable or offline
   const effectiveRedZones = useMemo(() => {
     if (redZones && redZones.features && redZones.features.length > 0) {
@@ -285,15 +430,32 @@ export default function MapView({
     return generateOfflineRedZones(habitations);
   }, [redZones, habitations]);
 
-  // Load India administrative boundary GeoJSON
+  // Load and cache India administrative boundary GeoJSON
   useEffect(() => {
     let mounted = true;
+    try {
+      const cached = sessionStorage.getItem("aasra_india_boundary");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.features?.length > 0) {
+          setIndiaBoundary(parsed);
+          return;
+        }
+      }
+    } catch {}
+
     fetch("/geojson/india-states-simplified.geojson")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (mounted && data) setIndiaBoundary(data);
+        if (mounted && data) {
+          setIndiaBoundary(data);
+          try {
+            sessionStorage.setItem("aasra_india_boundary", JSON.stringify(data));
+          } catch {}
+        }
       })
-      .catch(() => {});
+      .catch((err) => console.warn("Boundary load:", err));
+
     return () => {
       mounted = false;
     };
@@ -476,7 +638,11 @@ export default function MapView({
       <MapContainer
         center={center}
         zoom={zoom}
-        style={{ height: "100%", width: "100%" }}
+        style={{
+          height: "100%",
+          width: "100%",
+          backgroundColor: effectiveOffline ? "#0b1322" : "#f1f5f9",
+        }}
         scrollWheelZoom={true}
         zoomControl={false}
         tap={false}
@@ -491,26 +657,43 @@ export default function MapView({
           }}
         />
 
-        {/* High-Resolution Map Tile Layer (skipped if offline canvas) */}
-        {!activeBaseObj.isOfflineCanvas && (
+        {/* Tactical Offline Procedural Canvas Grid Layer */}
+        <TacticalOfflineGrid active={activeBaseObj.isOfflineCanvas || effectiveOffline} />
+
+        {/* High-Resolution Map Tile Layer (only rendered if online and not offline canvas) */}
+        {!activeBaseObj.isOfflineCanvas && !effectiveOffline && (
           <TileLayer
             key={baseMap}
             url={activeBaseObj.url}
             subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
             attribution={activeBaseObj.attribution}
             maxZoom={activeBaseObj.maxZoom}
+            errorTileUrl={OFFLINE_TILE_DATA_URL}
           />
         )}
 
-        {/* India Sovereign Border Overlay */}
+        {/* India Sovereign Border & Landmass Overlay */}
         {indiaBoundary && (
           <GeoJSON
+            key={`india-boundary-${effectiveOffline ? "offline" : "online"}`}
             data={indiaBoundary}
-            style={{
-              color: "#1a73e8",
-              weight: 2.2,
-              opacity: 0.85,
-              fillOpacity: 0,
+            style={() => ({
+              color: effectiveOffline ? "#38bdf8" : "#1a73e8",
+              weight: effectiveOffline ? 1.5 : 2.0,
+              opacity: 0.9,
+              fillColor: effectiveOffline ? "#1e293b" : "#3b82f6",
+              fillOpacity: effectiveOffline ? 0.82 : 0,
+              dashArray: effectiveOffline ? "4, 4" : undefined,
+            })}
+            onEachFeature={(f, layer) => {
+              const name = f.properties?.NAME_1 || f.properties?.name;
+              if (name) {
+                layer.bindTooltip(name, {
+                  permanent: false,
+                  direction: "center",
+                  className: "text-[10px] font-bold text-slate-200 bg-slate-900/90 px-1.5 py-0.5 rounded border border-slate-700 shadow",
+                });
+              }
             }}
           />
         )}
@@ -762,15 +945,15 @@ export default function MapView({
       {/* ===================================================================== */}
 
       {/* OFFLINE STATUS BADGE (Top Right) */}
-      {!isOnline && (
-        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/95 dark:bg-amber-600/95 text-white font-bold text-[11px] shadow-xl backdrop-blur-md animate-pulse border border-amber-300/40">
-          <Shield className="w-3.5 h-3.5" />
-          <span>🟢 Offline Safe Mode (On-Device GIS & Routes)</span>
+      {effectiveOffline && (
+        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700/95 dark:bg-emerald-800/95 text-white font-bold text-[11px] shadow-xl backdrop-blur-md border border-emerald-400/40 animate-pulse">
+          <Shield className="w-3.5 h-3.5 text-emerald-300" />
+          <span>🟢 Tactical Offline Mode (Zero-Network Grid & On-Device GIS)</span>
         </div>
       )}
 
       {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Shortest Route is active) */}
-      {roadRoute && activeTargetShelter && (
+      {roadRoute && activeTargetShelter && !isHudClosed && (
         <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
           <div className="flex items-start gap-3">
             <div className={`p-2.5 rounded-xl text-white shadow flex-shrink-0 mt-0.5 ${roadRoute.isSafeBypass ? "bg-cyan-600" : "bg-emerald-600"}`}>
@@ -781,9 +964,23 @@ export default function MapView({
                 <span className={`font-black uppercase text-[10px] tracking-wider flex items-center gap-1 ${roadRoute.isSafeBypass ? "text-cyan-600 dark:text-cyan-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                   <span>{roadRoute.isSafeBypass ? "🛡️ Safest Bypass Route" : "⚡ Shortest Safe Path"}</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex-shrink-0">
-                  {roadRoute.isRoadNetwork ? "Road Verified" : "On-Device Corridor"}
-                </span>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
+                    {roadRoute.isRoadNetwork ? "Road Verified" : "On-Device Corridor"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsHudClosed(true);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    title="Close Shortest Safe Path Popup"
+                    aria-label="Close popup"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <p className="text-slate-900 dark:text-white font-bold text-xs mt-1 truncate">
                 To Safe Shelter: <span className="text-blue-600 dark:text-blue-400">{activeTargetShelter.name}</span>
@@ -803,16 +1000,46 @@ export default function MapView({
                 <span>🛣️ Distance: <strong className={roadRoute.isSafeBypass ? "text-cyan-600 dark:text-cyan-400" : "text-emerald-600 dark:text-emerald-400"}>{roadRoute.distanceKm} km</strong></span>
                 <span>⏱️ Transit: <strong>~{roadRoute.durationMinutes} mins</strong></span>
               </div>
-              <button
-                onClick={openGoogleMapsDirections}
-                className="mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-              >
-                <span>Open Turn-by-Turn GPS in Google Maps</span>
-                <ExternalLink className="w-3 h-3" />
-              </button>
+              <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={openGoogleMapsDirections}
+                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Open GPS Navigation</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsHudClosed(true);
+                    if (onSelectHabitation) onSelectHabitation(null);
+                    if (onSelectShelter) onSelectShelter(null);
+                  }}
+                  className="text-[10.5px] font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
+                  title="Clear route from map"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Clear Route</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Re-open Route HUD Floating Button when dismissed */}
+      {roadRoute && activeTargetShelter && isHudClosed && (
+        <button
+          type="button"
+          onClick={() => setIsHudClosed(false)}
+          className="absolute top-3 left-3 z-[1000] flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-50 transition active:scale-95 animate-in fade-in"
+          title="Show Route Details"
+        >
+          <Navigation className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+          <span>⚡ Route: {roadRoute.distanceKm} km to {activeTargetShelter.name}</span>
+        </button>
       )}
 
       {/* 2. BOTTOM-LEFT GOOGLE MAPS BASE LAYER TOGGLE */}
