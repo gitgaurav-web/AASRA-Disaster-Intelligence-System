@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   MapContainer,
-  TileLayer,
   Marker,
   Popup,
   Polyline,
@@ -26,6 +25,7 @@ import {
   ExternalLink,
   Shield,
   X,
+  Download,
 } from "lucide-react";
 import LiveRiskInspector from "./LiveRiskInspector";
 import {
@@ -33,6 +33,12 @@ import {
   findShortestEvacuationPath,
   generateOfflineRedZones,
 } from "../services/osrmRouting";
+import {
+  OfflineCachedTileLayer,
+  precacheOfflineMap,
+  getOfflineCacheStats,
+  GEOJSON_CACHE_KEY,
+} from "../services/offlineTileCache";
 
 // =========================================================================
 // HIGH-VISIBILITY GOOGLE-STYLE SVG PINS (100% Reliable, Zero Image URLs)
@@ -168,129 +174,39 @@ const BASE_MAPS = {
     attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19,
   },
-  tacticalOffline: {
-    id: "tacticalOffline",
-    name: "Tactical Offline Grid",
-    icon: "🛡️",
-    url: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='%230b1322'/%3E%3Cdefs%3E%3Cpattern id='g32' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 32 0 L 0 0 0 32' fill='none' stroke='%231e293b' stroke-width='0.75'/%3E%3C/pattern%3E%3Cpattern id='g64' width='64' height='64' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 64 0 L 0 0 0 64' fill='none' stroke='%23334155' stroke-width='1.2'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='256' height='256' fill='url(%23g32)'/%3E%3Crect width='256' height='256' fill='url(%23g64)'/%3E%3Cpath d='M 60 64 L 68 64 M 64 60 L 64 68 M 124 128 L 132 128 M 128 124 L 128 132 M 188 192 L 196 192 M 192 188 L 192 196' stroke='%2306b6d4' stroke-width='1.5' stroke-opacity='0.5'/%3E%3Ctext x='8' y='16' font-family='monospace' font-size='9' font-weight='bold' fill='%2364748b'%3EAASRA TACTICAL GRID%3C/text%3E%3C/svg%3E",
-    subdomains: [],
-    attribution: '&copy; AASRA On-Device Tactical Grid (Zero-Network)',
-    maxZoom: 20,
-    isOfflineCanvas: true,
-  },
 };
 
 // =========================================================================
-// PROCEDURAL ON-DEVICE TACTICAL GRID ENGINE (100% Zero-Network / Offline)
+// SMART OFFLINE & ONLINE PERSISTENT TILE LAYER
+// Uses local CacheStorage for 0ms offline map loading & realistic cartography
 // =========================================================================
-const OFFLINE_TILE_DATA_URL =
-  "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' fill='%230b1322'/%3E%3Cdefs%3E%3Cpattern id='g32' width='32' height='32' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 32 0 L 0 0 0 32' fill='none' stroke='%231e293b' stroke-width='0.75'/%3E%3C/pattern%3E%3Cpattern id='g64' width='64' height='64' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 64 0 L 0 0 0 64' fill='none' stroke='%23334155' stroke-width='1.2'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='256' height='256' fill='url(%23g32)'/%3E%3Crect width='256' height='256' fill='url(%23g64)'/%3E%3Cpath d='M 60 64 L 68 64 M 64 60 L 64 68 M 124 128 L 132 128 M 128 124 L 128 132 M 188 192 L 196 192 M 192 188 L 192 196' stroke='%2306b6d4' stroke-width='1.5' stroke-opacity='0.5'/%3E%3Ctext x='8' y='16' font-family='monospace' font-size='9' font-weight='bold' fill='%2364748b'%3EAASRA TACTICAL GRID%3C/text%3E%3C/svg%3E";
-
-const TacticalGridLayer = L.GridLayer.extend({
-  createTile: function (coords) {
-    const tile = document.createElement("canvas");
-    const tileSize = this.getTileSize();
-    tile.width = tileSize.x;
-    tile.height = tileSize.y;
-    const ctx = tile.getContext("2d");
-    if (!ctx) return tile;
-
-    const w = tileSize.x;
-    const h = tileSize.y;
-
-    // 1. Deep tactical military background
-    ctx.fillStyle = "#0c1322";
-    ctx.fillRect(0, 0, w, h);
-
-    // 2. Minor grid lines (every 32px)
-    ctx.strokeStyle = "rgba(30, 41, 59, 0.85)";
-    ctx.lineWidth = 0.75;
-    for (let x = 0; x <= w; x += 32) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= h; y += 32) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
-    // 3. Major grid lines (every 64px)
-    ctx.strokeStyle = "rgba(51, 65, 85, 0.95)";
-    ctx.lineWidth = 1.25;
-    for (let x = 0; x <= w; x += 64) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= h; y += 64) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
-    // 4. Tactical crosshairs at major intersections
-    ctx.strokeStyle = "rgba(6, 182, 212, 0.55)";
-    ctx.lineWidth = 1.5;
-    for (let x = 64; x < w; x += 64) {
-      for (let y = 64; y < h; y += 64) {
-        ctx.beginPath();
-        ctx.moveTo(x - 5, y);
-        ctx.lineTo(x + 5, y);
-        ctx.moveTo(x, y - 5);
-        ctx.lineTo(x, y + 5);
-        ctx.stroke();
-      }
-    }
-
-    // 5. Geographic coordinates via Spherical Mercator inverse projection
-    const z = coords.z;
-    const n = Math.PI - (2 * Math.PI * coords.y) / Math.pow(2, z);
-    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-    const lon = (coords.x / Math.pow(2, z)) * 360 - 180;
-
-    // 6. Tactical Coordinate Label in top-left
-    ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
-    ctx.font = "bold 9px monospace";
-    const latStr = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"}`;
-    const lonStr = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
-    ctx.fillText(`${latStr}  ${lonStr}`, 8, 16);
-
-    // 7. Tactical Grid Badge in bottom-right
-    ctx.fillStyle = "rgba(56, 189, 248, 0.55)";
-    ctx.font = "bold 8px sans-serif";
-    ctx.fillText(`AASRA OFFLINE Z${z}`, w - 78, h - 8);
-
-    return tile;
-  },
-});
-
-function TacticalOfflineGrid({ active }) {
+function SmartMapTileLayer({ url, subdomains, attribution, maxZoom }) {
   const map = useMap();
+  const layerRef = useRef(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!map) return;
 
-    const layer = new TacticalGridLayer({
-      attribution: "&copy; AASRA On-Device Tactical Grid (Zero-Data Mode)",
-      maxZoom: 20,
-      minZoom: 1,
+    // Create the persistent OfflineCachedTileLayer instance
+    const layer = new OfflineCachedTileLayer(url, {
+      subdomains: subdomains || ["a", "b", "c", "d"],
+      attribution: attribution || "",
+      maxZoom: maxZoom || 20,
+      crossOrigin: true,
       zIndex: 1,
     });
 
     layer.addTo(map);
+    layerRef.current = layer;
 
     return () => {
       try {
-        map.removeLayer(layer);
+        if (layerRef.current) {
+          map.removeLayer(layerRef.current);
+        }
       } catch {}
     };
-  }, [map, active]);
+  }, [map, url, maxZoom, JSON.stringify(subdomains), attribution]);
 
   return null;
 }
@@ -365,11 +281,8 @@ export default function MapView({
 
   const effectiveOffline = Boolean(isOffline || !isOnline);
 
-  // Default to Google Roadmap for Citizen, Google Hybrid / Dark for Gov, or Tactical Offline if offline
+  // Active base map (retains user choice even when offline, serving cached tiles or procedural cartography)
   const [baseMap, setBaseMap] = useState(() => {
-    if (isOffline || (typeof navigator !== "undefined" && !navigator.onLine)) {
-      return "tacticalOffline";
-    }
     return variant === "gov" ? "googleHybrid" : "googleRoad";
   });
   const lastOnlineBaseMapRef = useRef(variant === "gov" ? "googleHybrid" : "googleRoad");
@@ -379,6 +292,61 @@ export default function MapView({
   const [locating, setLocating] = useState(false);
   const [indiaBoundary, setIndiaBoundary] = useState(null);
   const [isHudClosed, setIsHudClosed] = useState(false);
+
+  // Offline Tile Cache state & auto-sync
+  const [tileStats, setTileStats] = useState({ isSupported: true, tileCount: 0, isReady: false });
+  const [isSyncingTiles, setIsSyncingTiles] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ percent: 0 });
+
+  const refreshCacheStats = useCallback(async () => {
+    try {
+      const stats = await getOfflineCacheStats();
+      setTileStats(stats);
+      return stats;
+    } catch {
+      return { isSupported: false, tileCount: 0, isReady: false };
+    }
+  }, []);
+
+  // Background auto-pre-caching when online
+  useEffect(() => {
+    let active = true;
+    refreshCacheStats().then((stats) => {
+      if (!active) return;
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.onLine &&
+        !effectiveOffline &&
+        (!stats || stats.tileCount < 50)
+      ) {
+        precacheOfflineMap((p) => {
+          if (active) setSyncProgress(p);
+        })
+          .then(() => {
+            if (active) refreshCacheStats();
+          })
+          .catch(() => {});
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [refreshCacheStats, effectiveOffline]);
+
+  const handleManualSyncTiles = async () => {
+    if (isSyncingTiles) return;
+    setIsSyncingTiles(true);
+    try {
+      await precacheOfflineMap((p) => {
+        setSyncProgress(p);
+      });
+      await refreshCacheStats();
+    } catch (err) {
+      console.warn("Manual tile pre-cache failed:", err);
+    } finally {
+      setIsSyncingTiles(false);
+    }
+  };
 
   const containerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -403,24 +371,6 @@ export default function MapView({
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
-
-  // Automatically switch base map to tacticalOffline when disconnected, and restore when reconnected
-  useEffect(() => {
-    if (effectiveOffline) {
-      if (baseMap !== "tacticalOffline") {
-        lastOnlineBaseMapRef.current = baseMap;
-        setBaseMap("tacticalOffline");
-      }
-    } else {
-      if (
-        baseMap === "tacticalOffline" &&
-        lastOnlineBaseMapRef.current &&
-        lastOnlineBaseMapRef.current !== "tacticalOffline"
-      ) {
-        setBaseMap(lastOnlineBaseMapRef.current);
-      }
-    }
-  }, [effectiveOffline]);
 
   // Compute On-Device Red Zones automatically if server data is unavailable or offline
   const effectiveRedZones = useMemo(() => {
@@ -641,7 +591,7 @@ export default function MapView({
         style={{
           height: "100%",
           width: "100%",
-          backgroundColor: effectiveOffline ? "#0b1322" : "#f1f5f9",
+          backgroundColor: "#f1f5f9",
         }}
         scrollWheelZoom={true}
         zoomControl={false}
@@ -657,33 +607,26 @@ export default function MapView({
           }}
         />
 
-        {/* Tactical Offline Procedural Canvas Grid Layer */}
-        <TacticalOfflineGrid active={activeBaseObj.isOfflineCanvas || effectiveOffline} />
-
-        {/* High-Resolution Map Tile Layer (only rendered if online and not offline canvas) */}
-        {!activeBaseObj.isOfflineCanvas && !effectiveOffline && (
-          <TileLayer
-            key={baseMap}
-            url={activeBaseObj.url}
-            subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
-            attribution={activeBaseObj.attribution}
-            maxZoom={activeBaseObj.maxZoom}
-            errorTileUrl={OFFLINE_TILE_DATA_URL}
-          />
-        )}
+        {/* Persistent Smart Offline & Online Cached Map Tile Layer */}
+        <SmartMapTileLayer
+          key={`${baseMap}-${effectiveOffline ? "offline" : "online"}`}
+          url={activeBaseObj.url}
+          subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
+          attribution={activeBaseObj.attribution}
+          maxZoom={activeBaseObj.maxZoom || 20}
+        />
 
         {/* India Sovereign Border & Landmass Overlay */}
         {indiaBoundary && (
           <GeoJSON
-            key={`india-boundary-${effectiveOffline ? "offline" : "online"}`}
+            key="india-boundary"
             data={indiaBoundary}
             style={() => ({
-              color: effectiveOffline ? "#38bdf8" : "#1a73e8",
-              weight: effectiveOffline ? 1.5 : 2.0,
-              opacity: 0.9,
-              fillColor: effectiveOffline ? "#1e293b" : "#3b82f6",
-              fillOpacity: effectiveOffline ? 0.82 : 0,
-              dashArray: effectiveOffline ? "4, 4" : undefined,
+              color: "#94a3b8",
+              weight: 1.2,
+              opacity: 0.85,
+              fillColor: "transparent",
+              fillOpacity: 0,
             })}
             onEachFeature={(f, layer) => {
               const name = f.properties?.NAME_1 || f.properties?.name;
@@ -691,7 +634,8 @@ export default function MapView({
                 layer.bindTooltip(name, {
                   permanent: false,
                   direction: "center",
-                  className: "text-[10px] font-bold text-slate-200 bg-slate-900/90 px-1.5 py-0.5 rounded border border-slate-700 shadow",
+                  className:
+                    "text-[10px] font-bold text-slate-800 bg-white/95 px-1.5 py-0.5 rounded border border-slate-300 shadow-sm",
                 });
               }
             }}
@@ -944,13 +888,46 @@ export default function MapView({
       {/* GOOGLE MAPS STYLE FLOATING CONTROLS                                  */}
       {/* ===================================================================== */}
 
-      {/* OFFLINE STATUS BADGE (Top Right) */}
-      {effectiveOffline && (
-        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700/95 dark:bg-emerald-800/95 text-white font-bold text-[11px] shadow-xl backdrop-blur-md border border-emerald-400/40 animate-pulse">
-          <Shield className="w-3.5 h-3.5 text-emerald-300" />
-          <span>🟢 Tactical Offline Mode (Zero-Network Grid & On-Device GIS)</span>
-        </div>
-      )}
+      {/* OFFLINE STATUS & MAP SYNC CONTROLS (Top Right) */}
+      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2">
+        {effectiveOffline ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700/95 dark:bg-emerald-800/95 text-white font-bold text-[11px] shadow-xl backdrop-blur-md border border-emerald-400/40">
+            <Shield className="w-3.5 h-3.5 text-emerald-300" />
+            <span>🟢 100% Offline Map ({tileStats.tileCount > 0 ? `${tileStats.tileCount} Tiles` : "Local Atlas"} & On-Device GIS)</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleManualSyncTiles}
+            disabled={isSyncingTiles}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-xl backdrop-blur-md border transition active:scale-95 ${
+              isSyncingTiles
+                ? "bg-amber-600/95 text-white border-amber-400/50 cursor-wait"
+                : tileStats.isReady
+                ? "bg-white/95 dark:bg-slate-900/95 text-emerald-700 dark:text-emerald-400 border-emerald-400/40 hover:bg-emerald-50 dark:hover:bg-slate-800"
+                : "bg-white/95 dark:bg-slate-900/95 text-blue-700 dark:text-blue-400 border-blue-400/40 hover:bg-blue-50 dark:hover:bg-slate-800"
+            }`}
+            title="Pre-cache high-resolution map tiles for India and 7 disaster districts"
+          >
+            {isSyncingTiles ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                <span>Syncing Map... {syncProgress.percent || 0}%</span>
+              </>
+            ) : tileStats.isReady ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Offline Map Ready ({tileStats.tileCount} Tiles)</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Sync Offline Map Tiles</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
 
       {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Shortest Route is active) */}
       {roadRoute && activeTargetShelter && !isHudClosed && (

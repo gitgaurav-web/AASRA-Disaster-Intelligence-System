@@ -456,8 +456,8 @@ export default function CitizenRiskMap() {
               <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
               <span>
                 {simulateOffline
-                  ? "🛡️ Offline Simulation Active: All Red Zones, Shelter Allocations & Safest Paths are running 100% on-device with zero internet."
-                  : "🛡️ Emergency Network Outage: Operating in 100% On-Device Mode with offline Red Zones and obstacle-avoidance routing."}
+                  ? "🛡️ Offline Simulation Active: 100% On-Device GIS with Cached Road Maps, Obstacle-Avoidance Routing & Shelter Allocations."
+                  : "🛡️ Emergency Network Outage: Operating in 100% On-Device Mode with Cached Road Maps, Red Zones & Shortest Safe Paths."}
               </span>
             </div>
             {simulateOffline && (
