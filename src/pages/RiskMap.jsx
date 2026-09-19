@@ -23,6 +23,11 @@ import MapLegend from "@/components/MapLegend";
 import FilterPanel from "@/components/FilterPanel";
 import ScenarioSandbox from "@/components/ScenarioSandbox";
 import {
+  generateOfflineRedZones,
+  saveOfflineGISCache,
+  getOfflineGISCache,
+} from "@/services/osrmRouting";
+import {
   STATE_COORDINATES,
   getStateForDistrict,
   getDistrictsForState,
@@ -225,15 +230,30 @@ export default function RiskMap() {
       if (!zoneRes || !zoneRes.ok) {
         zoneRes = await fetch("http://127.0.0.1:8000/api/gis/red-zones").catch(() => null);
       }
+      let loadedZones = null;
       if (zoneRes && zoneRes.ok) {
         const redZoneGeoJSON = await zoneRes.json();
-        setRedZones(redZoneGeoJSON);
+        if (redZoneGeoJSON?.features?.length > 0) loadedZones = redZoneGeoJSON;
       }
+      if (!loadedZones) {
+        loadedZones = generateOfflineRedZones(parsedHabs.length > 0 ? parsedHabs : DEFAULT_HABITATIONS);
+      }
+      setRedZones(loadedZones);
+
+      saveOfflineGISCache({
+        habitations: parsedHabs.length > 0 ? parsedHabs : DEFAULT_HABITATIONS,
+        shelters: parsedSites.length > 0 ? parsedSites : DEFAULT_SHELTERS,
+        redZones: loadedZones,
+      });
     } catch (err) {
-      console.error("GIS loading failed, using fallback:", err);
-      setHabitations(DEFAULT_HABITATIONS);
-      setBaselineHabitations(DEFAULT_HABITATIONS);
-      setRelocationSites(DEFAULT_SHELTERS);
+      console.warn("GIS loading failed, using on-device cache / defaults:", err);
+      const cached = getOfflineGISCache();
+      const currentHabs = cached?.habitations || DEFAULT_HABITATIONS;
+      const currentShelters = cached?.shelters || DEFAULT_SHELTERS;
+      setHabitations(currentHabs);
+      setBaselineHabitations(currentHabs);
+      setRelocationSites(currentShelters);
+      setRedZones(cached?.redZones || generateOfflineRedZones(currentHabs));
     } finally {
       setLoading(false);
     }

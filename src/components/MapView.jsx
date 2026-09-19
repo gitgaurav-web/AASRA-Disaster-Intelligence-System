@@ -27,7 +27,11 @@ import {
   Shield,
 } from "lucide-react";
 import LiveRiskInspector from "./LiveRiskInspector";
-import { getEvacuationRoute, findShortestEvacuationPath } from "../services/osrmRouting";
+import {
+  getEvacuationRoute,
+  findShortestEvacuationPath,
+  generateOfflineRedZones,
+} from "../services/osrmRouting";
 
 // =========================================================================
 // HIGH-VISIBILITY GOOGLE-STYLE SVG PINS (100% Reliable, Zero Image URLs)
@@ -163,6 +167,16 @@ const BASE_MAPS = {
     attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19,
   },
+  tacticalOffline: {
+    id: "tacticalOffline",
+    name: "Tactical Offline Grid",
+    icon: "🛡️",
+    url: "",
+    subdomains: [],
+    attribution: '&copy; AASRA On-Device Tactical Grid (Zero-Network)',
+    maxZoom: 20,
+    isOfflineCanvas: true,
+  },
 };
 
 // =========================================================================
@@ -248,6 +262,29 @@ export default function MapView({
     }
   }, [center, zoom]);
 
+  const [isOnline, setIsOnline] = useState(
+    () => (typeof navigator !== "undefined" ? navigator.onLine : true)
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Compute On-Device Red Zones automatically if server data is unavailable or offline
+  const effectiveRedZones = useMemo(() => {
+    if (redZones && redZones.features && redZones.features.length > 0) {
+      return redZones;
+    }
+    return generateOfflineRedZones(habitations);
+  }, [redZones, habitations]);
+
   // Load India administrative boundary GeoJSON
   useEffect(() => {
     let mounted = true;
@@ -297,7 +334,7 @@ export default function MapView({
   const [roadRoute, setRoadRoute] = useState(null);
   const [isShortestCandidate, setIsShortestCandidate] = useState(false);
 
-  // Calculate Shortest Safe Path automatically
+  // Calculate Shortest Safe Path automatically (with Red-Zone Hazard Avoidance)
   useEffect(() => {
     let mounted = true;
 
@@ -308,13 +345,13 @@ export default function MapView({
       return;
     }
 
-    // If user explicitly picked a shelter from the UI, route directly to it
+    // If user explicitly picked a shelter from the UI, route directly to it (skirting hazard buffers)
     if (selectedShelter) {
       const destCoords = getCoords(selectedShelter);
       if (destCoords) {
         setActiveTargetShelter(selectedShelter);
         setIsShortestCandidate(false);
-        getEvacuationRoute(originCoords, destCoords).then((route) => {
+        getEvacuationRoute(originCoords, destCoords, effectiveRedZones).then((route) => {
           if (mounted && route) setRoadRoute(route);
         });
       }
@@ -323,8 +360,8 @@ export default function MapView({
       };
     }
 
-    // Otherwise, automatically calculate the SHORTEST PATH to the closest safe shelter!
-    findShortestEvacuationPath(originCoords, relocationSites).then(({ bestShelter, route }) => {
+    // Otherwise, automatically calculate the SHORTEST & SAFEST PATH avoiding red zones
+    findShortestEvacuationPath(originCoords, relocationSites, effectiveRedZones).then(({ bestShelter, route }) => {
       if (mounted && bestShelter) {
         setActiveTargetShelter(bestShelter);
         setRoadRoute(route);
@@ -335,7 +372,7 @@ export default function MapView({
     return () => {
       mounted = false;
     };
-  }, [originCoords, selectedShelter, relocationSites]);
+  }, [originCoords, selectedShelter, relocationSites, effectiveRedZones]);
 
   const fallbackRoute =
     originCoords && activeTargetShelter
@@ -454,14 +491,16 @@ export default function MapView({
           }}
         />
 
-        {/* High-Resolution Google Maps Tile Layer */}
-        <TileLayer
-          key={baseMap}
-          url={activeBaseObj.url}
-          subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
-          attribution={activeBaseObj.attribution}
-          maxZoom={activeBaseObj.maxZoom}
-        />
+        {/* High-Resolution Map Tile Layer (skipped if offline canvas) */}
+        {!activeBaseObj.isOfflineCanvas && (
+          <TileLayer
+            key={baseMap}
+            url={activeBaseObj.url}
+            subdomains={activeBaseObj.subdomains || ["a", "b", "c", "d"]}
+            attribution={activeBaseObj.attribution}
+            maxZoom={activeBaseObj.maxZoom}
+          />
+        )}
 
         {/* India Sovereign Border Overlay */}
         {indiaBoundary && (
@@ -476,16 +515,17 @@ export default function MapView({
           />
         )}
 
-        {/* Hazard Screening Red Zones */}
-        {showRedZones && redZones && (
+        {/* Hazard Screening Red Zones (Automatic On-Device Geodesic Synthesis if offline) */}
+        {showRedZones && effectiveRedZones && (
           <GeoJSON
-            data={redZones}
+            key={`redzones-${effectiveRedZones.features?.length || 0}`}
+            data={effectiveRedZones}
             style={(f) => ({
               color: f?.properties?.risk_level === "Critical" ? "#d93025" : "#ea8600",
-              weight: 2,
+              weight: 2.2,
               fillColor: f?.properties?.risk_level === "Critical" ? "#ea4335" : "#fbbc04",
-              fillOpacity: 0.22,
-              dashArray: "5, 5",
+              fillOpacity: 0.24,
+              dashArray: "6, 6",
             })}
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
@@ -494,8 +534,9 @@ export default function MapView({
                   <strong style="color:#d93025; font-size:13px;">⚠️ ${p.name || "Risk Screening Area"}</strong>
                   <div style="margin-top:5px; font-size:11px; color: inherit; opacity: 0.9;">
                     Hazard: <strong>${p.hazard || "Multi-Hazard"}</strong><br/>
-                    Risk Index: <strong>${p.risk_level || "Critical"}</strong><br/>
-                    Buffer Type: <em>${p.classification || "Official Screening"}</em>
+                    Risk Index: <strong>${p.risk_level || "Critical"}</strong> (Score: ${p.risk_score || "N/A"})<br/>
+                    Screening Radius: <strong>~${p.screening_radius_km || 2.5} km</strong><br/>
+                    Buffer Type: <em>${p.classification || "Official Screening Buffer"}</em>
                   </div>
                 </div>
               `);
@@ -503,18 +544,33 @@ export default function MapView({
           />
         )}
 
-        {/* Evacuation Route Polyline in Google Blue */}
+        {/* Evacuation Route Polyline (High-Visibility Dual Core with Safe Bypass) */}
         {activeCorridorCoords && (
-          <Polyline
-            positions={activeCorridorCoords}
-            pathOptions={{
-              color: "#1a73e8",
-              weight: 6,
-              opacity: 0.95,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
+          <>
+            {/* Outer high-contrast casing */}
+            <Polyline
+              positions={activeCorridorCoords}
+              pathOptions={{
+                color: roadRoute?.isSafeBypass ? "#0891b2" : "#1a73e8",
+                weight: 6.5,
+                opacity: 0.95,
+                lineCap: "round",
+                lineJoin: "round",
+                dashArray: roadRoute?.isSafeBypass ? "12, 6" : undefined,
+              }}
+            />
+            {/* Inner illuminated safety core */}
+            <Polyline
+              positions={activeCorridorCoords}
+              pathOptions={{
+                color: roadRoute?.isSafeBypass ? "#a5f3fc" : "#ffffff",
+                weight: 2.5,
+                opacity: 0.85,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          </>
         )}
 
         {/* User GPS Pin */}
@@ -693,20 +749,28 @@ export default function MapView({
       {/* GOOGLE MAPS STYLE FLOATING CONTROLS                                  */}
       {/* ===================================================================== */}
 
+      {/* OFFLINE STATUS BADGE (Top Right) */}
+      {!isOnline && (
+        <div className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/95 dark:bg-amber-600/95 text-white font-bold text-[11px] shadow-xl backdrop-blur-md animate-pulse border border-amber-300/40">
+          <Shield className="w-3.5 h-3.5" />
+          <span>🟢 Offline Safe Mode (On-Device GIS & Routes)</span>
+        </div>
+      )}
+
       {/* 1. TOP-LEFT ACTIVE TELEMETRY HUD (When Shortest Route is active) */}
       {roadRoute && activeTargetShelter && (
         <div className="absolute top-3 left-3 z-[1000] max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-xs animate-in fade-in slide-in-from-top-2">
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow flex-shrink-0 mt-0.5">
+            <div className={`p-2.5 rounded-xl text-white shadow flex-shrink-0 mt-0.5 ${roadRoute.isSafeBypass ? "bg-cyan-600" : "bg-emerald-600"}`}>
               <Navigation className="w-4 h-4 animate-pulse" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-black text-emerald-600 dark:text-emerald-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                  <span>⚡ Shortest Safe Path Selected</span>
+                <span className={`font-black uppercase text-[10px] tracking-wider flex items-center gap-1 ${roadRoute.isSafeBypass ? "text-cyan-600 dark:text-cyan-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  <span>{roadRoute.isSafeBypass ? "🛡️ Safest Bypass Route" : "⚡ Shortest Safe Path"}</span>
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex-shrink-0">
-                  {roadRoute.isRoadNetwork ? "Road Verified" : "Direct Vector"}
+                  {roadRoute.isRoadNetwork ? "Road Verified" : "On-Device Corridor"}
                 </span>
               </div>
               <p className="text-slate-900 dark:text-white font-bold text-xs mt-1 truncate">
@@ -717,8 +781,14 @@ export default function MapView({
                   From: <strong className="text-red-600 dark:text-red-400">⚠️ {selectedHabitation.name}</strong> (Danger Zone)
                 </p>
               )}
+              {roadRoute.isSafeBypass && (
+                <div className="mt-1 flex items-center gap-1 text-[10.5px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/70 px-2 py-1 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                  <Shield className="w-3 h-3 text-cyan-600" />
+                  <span>Hazard Avoidance: Bypasses Active Red-Zone Perimeter</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-700 dark:text-slate-200 font-bold">
-                <span>🛣️ Distance: <strong className="text-emerald-600 dark:text-emerald-400">{roadRoute.distanceKm} km</strong></span>
+                <span>🛣️ Distance: <strong className={roadRoute.isSafeBypass ? "text-cyan-600 dark:text-cyan-400" : "text-emerald-600 dark:text-emerald-400"}>{roadRoute.distanceKm} km</strong></span>
                 <span>⏱️ Transit: <strong>~{roadRoute.durationMinutes} mins</strong></span>
               </div>
               <button

@@ -19,10 +19,18 @@ import {
   ExternalLink,
   RefreshCw,
   Compass,
+  Radio,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import MapView from "@/components/MapView";
 import MapLegend from "@/components/MapLegend";
-import { calculateHaversineKm } from "@/services/osrmRouting";
+import {
+  calculateHaversineKm,
+  generateOfflineRedZones,
+  saveOfflineGISCache,
+  getOfflineGISCache,
+} from "@/services/osrmRouting";
 import { useLanguage } from "@/context/LanguageContext";
 
 // Exact District Center Coordinates across India
@@ -66,6 +74,21 @@ export default function CitizenRiskMap() {
   const [redZones, setRedZones] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Network State & Offline Simulator
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  const [simulateOffline, setSimulateOffline] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   // Selected filters
   const [selectedDistrict, setSelectedDistrict] = useState("all");
   const [facilityFilter, setFacilityFilter] = useState("all");
@@ -81,14 +104,29 @@ export default function CitizenRiskMap() {
   const [mapCenter, setMapCenter] = useState([22.8, 79.5]);
   const [mapZoom, setMapZoom] = useState(5);
 
-  // Fetch GIS Data from Backend
+  // Fetch GIS Data with 100% Offline Persistence
   async function loadData() {
     setLoading(true);
+
+    // If simulating offline or device is offline, hydrate directly from local storage/fallbacks
+    if (simulateOffline || !isOnline) {
+      const cached = getOfflineGISCache();
+      const currentHabs = cached?.habitations && cached.habitations.length > 0 ? cached.habitations : FALLBACK_HABITATIONS;
+      const currentShelters = cached?.shelters && cached.shelters.length > 0 ? cached.shelters : FALLBACK_SHELTERS;
+      setHabitations(currentHabs);
+      setShelters(currentShelters);
+      const offlineZones = cached?.redZones || generateOfflineRedZones(currentHabs);
+      setRedZones(offlineZones);
+      setLoading(false);
+      return;
+    }
+
     try {
       let habRes = await fetch("/api/gis/habitations").catch(() => null);
       if (!habRes || !habRes.ok) {
         habRes = await fetch("http://127.0.0.1:8000/api/gis/habitations").catch(() => null);
       }
+      let loadedHabs = FALLBACK_HABITATIONS;
       if (habRes && habRes.ok) {
         const habGeo = await habRes.json();
         const parsed = (habGeo.features || []).map((f) => {
@@ -106,16 +144,15 @@ export default function CitizenRiskMap() {
             coords: [c[1], c[0]],
           };
         });
-        if (parsed.length > 0) setHabitations(parsed);
-        else setHabitations(FALLBACK_HABITATIONS);
-      } else {
-        setHabitations(FALLBACK_HABITATIONS);
+        if (parsed.length > 0) loadedHabs = parsed;
       }
+      setHabitations(loadedHabs);
 
       let siteRes = await fetch("/api/gis/relocation-sites").catch(() => null);
       if (!siteRes || !siteRes.ok) {
         siteRes = await fetch("http://127.0.0.1:8000/api/gis/relocation-sites").catch(() => null);
       }
+      let loadedShelters = FALLBACK_SHELTERS;
       if (siteRes && siteRes.ok) {
         const siteGeo = await siteRes.json();
         const parsed = (siteGeo.features || []).map((f) => {
@@ -132,23 +169,38 @@ export default function CitizenRiskMap() {
             facilities: ["water", "medical", "power", "food"],
           };
         });
-        if (parsed.length > 0) setShelters(parsed);
-        else setShelters(FALLBACK_SHELTERS);
-      } else {
-        setShelters(FALLBACK_SHELTERS);
+        if (parsed.length > 0) loadedShelters = parsed;
       }
+      setShelters(loadedShelters);
 
       let zoneRes = await fetch("/api/gis/red-zones").catch(() => null);
       if (!zoneRes || !zoneRes.ok) {
         zoneRes = await fetch("http://127.0.0.1:8000/api/gis/red-zones").catch(() => null);
       }
+      let loadedZones = null;
       if (zoneRes && zoneRes.ok) {
         const zoneGeo = await zoneRes.json();
-        setRedZones(zoneGeo);
+        if (zoneGeo?.features?.length > 0) loadedZones = zoneGeo;
       }
+      // If server returned no red zones, compute them immediately on-device!
+      if (!loadedZones) {
+        loadedZones = generateOfflineRedZones(loadedHabs);
+      }
+      setRedZones(loadedZones);
+
+      // Persist to local offline storage cache
+      saveOfflineGISCache({
+        habitations: loadedHabs,
+        shelters: loadedShelters,
+        redZones: loadedZones,
+      });
     } catch {
-      setHabitations(FALLBACK_HABITATIONS);
-      setShelters(FALLBACK_SHELTERS);
+      const cached = getOfflineGISCache();
+      const currentHabs = cached?.habitations || FALLBACK_HABITATIONS;
+      const currentShelters = cached?.shelters || FALLBACK_SHELTERS;
+      setHabitations(currentHabs);
+      setShelters(currentShelters);
+      setRedZones(cached?.redZones || generateOfflineRedZones(currentHabs));
     } finally {
       setLoading(false);
     }
@@ -156,7 +208,7 @@ export default function CitizenRiskMap() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [simulateOffline]);
 
   // Distinct districts list
   const districtList = useMemo(() => {
@@ -361,11 +413,29 @@ export default function CitizenRiskMap() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            {/* Offline Mode Simulator Toggle */}
+            <button
+              onClick={() => setSimulateOffline(!simulateOffline)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs transition border shadow-sm ${
+                simulateOffline
+                  ? "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-amber-600/30"
+                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+              title="Test complete offline capability without turning off Wi-Fi"
+            >
+              {simulateOffline ? (
+                <WifiOff className="w-3.5 h-3.5 animate-pulse text-white" />
+              ) : (
+                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+              )}
+              <span>{simulateOffline ? "Offline Sim: Active" : "Test Offline Mode"}</span>
+            </button>
+
             <button
               onClick={handleLocateCitizen}
               disabled={isLocating}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition active:scale-95"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition active:scale-95"
             >
               {isLocating ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -376,6 +446,28 @@ export default function CitizenRiskMap() {
             </button>
           </div>
         </div>
+
+        {/* OFFLINE RESILIENCE BANNER */}
+        {(simulateOffline || !isOnline) && (
+          <div className="mb-4 sm:mb-6 p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-3 text-xs shadow-sm">
+            <div className="flex items-center gap-2.5 font-bold">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
+              <span>
+                {simulateOffline
+                  ? "🛡️ Offline Simulation Active: All Red Zones, Shelter Allocations & Safest Paths are running 100% on-device with zero internet."
+                  : "🛡️ Emergency Network Outage: Operating in 100% On-Device Mode with offline Red Zones and obstacle-avoidance routing."}
+              </span>
+            </div>
+            {simulateOffline && (
+              <button
+                onClick={() => setSimulateOffline(false)}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] transition shadow"
+              >
+                Disable Offline Mode
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 3. DISTRICT JUMP PILLS - Sleek swipeable on mobile */}
         <div className="mb-4 sm:mb-6 bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-2 overflow-x-auto no-scrollbar">
