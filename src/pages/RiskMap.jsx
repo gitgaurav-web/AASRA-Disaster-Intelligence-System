@@ -70,9 +70,9 @@ const DISTRICT_COORDINATES = {
 };
 
 export default function RiskMap() {
-  const [habitations, setHabitations] = useState([]);
-  const [baselineHabitations, setBaselineHabitations] = useState([]);
-  const [relocationSites, setRelocationSites] = useState([]);
+  const [habitations, setHabitations] = useState(DEFAULT_HABITATIONS);
+  const [baselineHabitations, setBaselineHabitations] = useState(DEFAULT_HABITATIONS);
+  const [relocationSites, setRelocationSites] = useState(DEFAULT_SHELTERS);
   const [redZones, setRedZones] = useState(null);
 
   // Read authenticated user role

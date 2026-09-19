@@ -145,6 +145,24 @@ const BASE_MAPS = {
     attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19,
   },
+  osm: {
+    id: "osm",
+    name: "OpenStreetMap",
+    icon: "🌐",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    subdomains: ["a", "b", "c"],
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+  },
+  cartoVoyager: {
+    id: "cartoVoyager",
+    name: "Carto Voyager",
+    icon: "🧭",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    subdomains: ["a", "b", "c", "d"],
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19,
+  },
 };
 
 // =========================================================================
@@ -154,14 +172,25 @@ function MapController({ targetView, onMapReady }) {
   const map = useMap();
   const lastTargetViewRef = useRef(null);
 
-  // Invalidate size on load to guarantee 0 grey tiles
+  // Invalidate size on load & resize to guarantee 0 grey tiles across all devices/orientations
   useEffect(() => {
     if (onMapReady) onMapReady(map);
-    const t1 = setTimeout(() => map.invalidateSize(), 100);
-    const t2 = setTimeout(() => map.invalidateSize(), 400);
+
+    const invalidate = () => {
+      try {
+        map.invalidateSize();
+      } catch {}
+    };
+
+    const timers = [50, 150, 300, 600, 1200].map((ms) => setTimeout(invalidate, ms));
+
+    window.addEventListener("resize", invalidate);
+    window.addEventListener("orientationchange", invalidate);
+
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      timers.forEach((t) => clearTimeout(t));
+      window.removeEventListener("resize", invalidate);
+      window.removeEventListener("orientationchange", invalidate);
     };
   }, [map, onMapReady]);
 
@@ -413,6 +442,9 @@ export default function MapView({
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
         zoomControl={false}
+        tap={false}
+        touchZoom={true}
+        dragging={true}
       >
         {/* Core Controller for sizing & camera motions */}
         <MapController

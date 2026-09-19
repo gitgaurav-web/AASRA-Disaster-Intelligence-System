@@ -61,10 +61,10 @@ const FALLBACK_SHELTERS = [
 export default function CitizenRiskMap() {
   const { t } = useLanguage();
 
-  const [habitations, setHabitations] = useState([]);
-  const [shelters, setShelters] = useState([]);
+  const [habitations, setHabitations] = useState(FALLBACK_HABITATIONS);
+  const [shelters, setShelters] = useState(FALLBACK_SHELTERS);
   const [redZones, setRedZones] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Selected filters
   const [selectedDistrict, setSelectedDistrict] = useState("all");
@@ -249,12 +249,16 @@ export default function CitizenRiskMap() {
       setMapCenter(site.coords);
       setMapZoom(14);
     }
+    // On mobile devices, smoothly scroll up to the map so the user immediately sees the plotted route
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.scrollTo({ top: 120, behavior: "smooth" });
+    }
   };
 
   // User Geolocation Trigger
   const handleLocateCitizen = () => {
     if (!navigator.geolocation) {
-      alert("GPS location is not supported by your browser.");
+      alert("GPS location is not supported on this device.");
       return;
     }
     setIsLocating(true);
@@ -290,11 +294,19 @@ export default function CitizenRiskMap() {
           });
         }
       },
-      () => {
+      (err) => {
         setIsLocating(false);
-        alert("Unable to acquire GPS position. Please check your browser location permissions.");
+        console.warn("GPS location permission or timeout:", err);
+        // Graceful fallback to nearest district shelter without crashing alert
+        if (shelters.length > 0 && !selectedShelter) {
+          setSelectedShelter(shelters[0]);
+          if (shelters[0].coords) {
+            setMapCenter(shelters[0].coords);
+            setMapZoom(12);
+          }
+        }
       },
-      { timeout: 8000 }
+      { timeout: 12000, enableHighAccuracy: true }
     );
   };
 
@@ -466,8 +478,8 @@ export default function CitizenRiskMap() {
 
         {/* 5. MAIN INTERACTIVE MAP & SHELTERS GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Panel: Shelter Discovery (4 cols on lg) */}
-          <div className="lg:col-span-4 space-y-4">
+          {/* Left Panel: Shelter Discovery (4 cols on lg, below map on mobile screens) */}
+          <div className="lg:col-span-4 order-2 lg:order-1 space-y-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
@@ -662,8 +674,8 @@ export default function CitizenRiskMap() {
             </div>
           </div>
 
-          {/* Right Panel: Interactive Google Maps Canvas (8 cols on lg) */}
-          <div className="lg:col-span-8 space-y-3">
+          {/* Right Panel: Interactive Google Maps Canvas (8 cols on lg, top of view on mobile) */}
+          <div className="lg:col-span-8 order-1 lg:order-2 space-y-3">
             <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
