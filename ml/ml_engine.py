@@ -1,17 +1,29 @@
 """
 ml_engine.py
 =============
-Loads the trained models (Grand Super-Ensemble, Advanced Tuned XGBoost, LightGBM, CatBoost, and Random Forest Baseline)
+Loads the trained models (Grand Super-Ensemble, Advanced Tuned XGBoost, CatBoost, LightGBM, and Random Forest Baseline)
 and exposes predict_risk_ml() for inference across the DSS platform.
 """
 
 import math
+import sys
 from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
 
 ML_DIR = Path(__file__).resolve().parent
+if str(ML_DIR) not in sys.path:
+    sys.path.insert(0, str(ML_DIR))
+
+# Import ensemble definition so unpickling the pipeline succeeds seamlessly from any working directory
+try:
+    import ensemble_model
+    sys.modules["ensemble_model"] = ensemble_model
+    from ensemble_model import DualTaskSuperEnsemble
+except Exception:
+    pass
+
 MODEL_PATH = ML_DIR / "risk_model.pkl"
 XGBOOST_MODEL_PATH = ML_DIR / "xgboost_risk_model.pkl"
 LIGHTGBM_MODEL_PATH = ML_DIR / "lightgbm_risk_model.pkl"
@@ -27,6 +39,17 @@ _catboost_model = None
 _ensemble_model = None
 _encoders = None
 _load_error = None
+
+RAPID_ONSET = {
+    "Earthquake",
+    "Flash flood",
+    "Landslide",
+    "Mudflow",
+    "Avalanche",
+    "Storm surge",
+    "Tropical cyclone",
+    "Tornado",
+}
 
 
 def _load():
@@ -83,6 +106,7 @@ def _prepare_features(
 
     duration_clamped = max(1.0, min(365.0, float(duration_days or 1.0)))
     duration_log = float(np.log1p(duration_clamped))
+    is_multi_day = 1 if duration_clamped > 1 else 0
 
     year = int(start_year or 2026)
     month = int(start_month or 6)
@@ -96,18 +120,49 @@ def _prepare_features(
     day_sin = float(np.sin(2 * math.pi * day / 31))
     day_cos = float(np.cos(2 * math.pi * day / 31))
 
+    if month in (12, 1, 2):
+        season = "Winter"
+    elif month in (3, 4, 5):
+        season = "Spring"
+    elif month in (6, 7, 8):
+        season = "Summer"
+    else:
+        season = "Autumn"
+
     lat = float(latitude or 0.0)
     lon = float(longitude or 0.0)
+    abs_latitude = abs(lat)
     has_coords = 1 if (lat != 0.0 or lon != 0.0) else 0
     is_northern_hemisphere = 1 if lat > 0 else 0
+    is_tropical = 1 if abs_latitude <= 23.5 else 0
 
     has_event_name = 1 if event_name else 0
     disaster_multi_hazard = 1 if (associated_types and associated_types != "None") else 0
+    assoc_str = str(associated_types or "")
+    associated_count = 0 if assoc_str in ("None", "nan", "") else len(assoc_str.replace(";", ",").split(","))
 
-    loc_str = str(location_text or "")
+    dec_val = 1 if str(declaration).lower() in ("yes", "1", "true") else 0
+    app_val = 1 if str(appeal).lower() in ("yes", "1", "true") else 0
+    ofd_val = 1 if str(ofda_response).lower() in ("yes", "1", "true") else 0
+    emergency_response_score = dec_val * 1.0 + app_val * 1.5 + ofd_val * 2.0
+    has_international_aid = 1 if (app_val or ofd_val) else 0
+
+    dtype_str = str(disaster_type or "Unknown")
+    dsubtype_str = str(disaster_subtype or "Unknown")
+    is_rapid_onset = 1 if (dtype_str in RAPID_ONSET or dsubtype_str in RAPID_ONSET) else 0
+
+    loc_str = str(location_text or "").lower()
     location_word_count = len(loc_str.split()) if loc_str else 0
     location_district_count = len(loc_str.split(",")) if loc_str else 0
     has_admin_units = 1 if location_district_count > 1 else 0
+    is_coastal_keyword = 1 if any(k in loc_str for k in ("coast", "island", "bay", "sea", "delta", "beach", "port")) else 0
+    is_mountain_keyword = 1 if any(k in loc_str for k in ("mountain", "slope", "hill", "valley", "pass", "peak")) else 0
+    is_urban_keyword = 1 if any(k in loc_str for k in ("capital", "city", "metro", "province", "district")) else 0
+
+    cpi_val = float(cpi or 56.0)
+    cpi_log = float(np.log1p(cpi_val))
+    magnitude_cpi_interaction = float(magnitude_zscore * cpi_log)
+    duration_response_interaction = float(duration_log * emergency_response_score)
 
     # Default frequency priors
     country_freq = float(np.log1p(100.0))
@@ -117,8 +172,8 @@ def _prepare_features(
     row = {
         "disaster_group": str(disaster_group or "Unknown"),
         "disaster_subgroup": str(disaster_subgroup or "Unknown"),
-        "disaster_type": str(disaster_type or "Unknown"),
-        "disaster_subtype": str(disaster_subtype or "Unknown"),
+        "disaster_type": dtype_str,
+        "disaster_subtype": dsubtype_str,
         "country": str(country or "Unknown"),
         "subregion": str(subregion or "Unknown"),
         "region": str(region or "Unknown"),
@@ -128,13 +183,30 @@ def _prepare_features(
         "declaration": str(declaration or "No"),
         "appeal": str(appeal or "No"),
         "ofda_response": str(ofda_response or "No"),
-        "country_disaster": f"{country}_{disaster_type}",
-        "subregion_disaster": f"{subregion}_{disaster_type}",
-        "type_scale": f"{disaster_type}_{magnitude_scale}",
+        "season": season,
+        "country_disaster": f"{country}_{dtype_str}",
+        "subregion_disaster": f"{subregion}_{dtype_str}",
+        "type_scale": f"{dtype_str}_{magnitude_scale}",
+        "emergency_response_score": emergency_response_score,
+        "has_international_aid": has_international_aid,
+        "is_rapid_onset": is_rapid_onset,
+        "disaster_multi_hazard": disaster_multi_hazard,
+        "associated_count": associated_count,
+        "location_word_count": location_word_count,
+        "location_district_count": location_district_count,
+        "has_admin_units": has_admin_units,
+        "is_coastal_keyword": is_coastal_keyword,
+        "is_mountain_keyword": is_mountain_keyword,
+        "is_urban_keyword": is_urban_keyword,
+        "country_freq": country_freq,
+        "disaster_subtype_freq": subtype_freq,
+        "country_disaster_freq": country_disaster_freq,
+        "magnitude_missing": magnitude_missing,
         "magnitude_zscore": magnitude_zscore,
         "magnitude_log": magnitude_log,
-        "magnitude_missing": magnitude_missing,
         "duration_log": duration_log,
+        "duration_days": duration_clamped,
+        "is_multi_day": is_multi_day,
         "start_year": year,
         "elapsed_years": elapsed_years,
         "start_decade": start_decade,
@@ -143,20 +215,18 @@ def _prepare_features(
         "month_cos": month_cos,
         "day_sin": day_sin,
         "day_cos": day_cos,
-        "cpi": float(cpi or 56.0),
+        "cpi": cpi_val,
+        "cpi_log": cpi_log,
         "cpi_missing": 0,
         "has_coords": has_coords,
         "latitude": lat,
         "longitude": lon,
+        "abs_latitude": abs_latitude,
         "is_northern_hemisphere": is_northern_hemisphere,
+        "is_tropical": is_tropical,
         "has_event_name": has_event_name,
-        "disaster_multi_hazard": disaster_multi_hazard,
-        "location_word_count": location_word_count,
-        "location_district_count": location_district_count,
-        "has_admin_units": has_admin_units,
-        "country_freq": country_freq,
-        "disaster_subtype_freq": subtype_freq,
-        "country_disaster_freq": country_disaster_freq,
+        "magnitude_cpi_interaction": magnitude_cpi_interaction,
+        "duration_response_interaction": duration_response_interaction,
     }
     return pd.DataFrame([row])
 
@@ -221,9 +291,9 @@ def predict_risk_ml(
     def format_prediction(model):
         if model is None:
             return None
-        predicted_idx = int(model.predict(X)[0])
+        predicted_idx = int(np.asarray(model.predict(X)).ravel()[0])
         label = str(target_encoder.inverse_transform([predicted_idx])[0])
-        probabilities = model.predict_proba(X)[0]
+        probabilities = np.asarray(model.predict_proba(X))[0]
         confidence_by_class = {
             str(cls): round(float(prob), 3)
             for cls, prob in zip(target_encoder.classes_, probabilities)
@@ -236,12 +306,16 @@ def predict_risk_ml(
 
     baseline = format_prediction(_baseline_model)
     xgboost = format_prediction(_xgboost_model)
+    catboost = format_prediction(_catboost_model)
+    lightgbm = format_prediction(_lightgbm_model)
     ensemble = format_prediction(_ensemble_model) if _ensemble_model else xgboost
 
     return {
         **ensemble,
-        "model": "Grand Super-Ensemble (XGBoost + LightGBM + CatBoost + Random Forest)",
-        "xgboost_standalone": {**xgboost, "model": "Tuned XGBClassifier"},
-        "baseline": {**baseline, "model": "RandomForestClassifier"},
-        "note": "Trained on real EM-DAT records with hierarchical taxonomy, unit-scale normalization, and multi-model soft voting.",
+        "model": "Grand Super-Ensemble (Dual-Task XGBoost + CatBoost + LightGBM + ExtraTrees + RF)",
+        "xgboost_standalone": {**xgboost, "model": "Tuned XGBClassifier"} if xgboost else None,
+        "catboost_standalone": {**catboost, "model": "Tuned CatBoostClassifier"} if catboost else None,
+        "lightgbm_standalone": {**lightgbm, "model": "Tuned LGBMClassifier"} if lightgbm else None,
+        "baseline": {**baseline, "model": "RandomForestClassifier"} if baseline else None,
+        "note": "Trained on real EM-DAT records with 57 physical, emergency response, and dual-task continuous severity features.",
     }
