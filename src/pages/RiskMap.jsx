@@ -467,6 +467,7 @@ export default function RiskMap() {
   ).length;
 
   const handleToggleHabitation = (hab) => {
+    setSelectedShelter(null);
     if (!hab) {
       setSelectedHab(null);
       return;

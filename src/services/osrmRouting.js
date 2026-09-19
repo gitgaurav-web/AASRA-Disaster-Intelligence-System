@@ -131,7 +131,17 @@ export function computeSafeObstacleAvoidancePath(start, end, redZonesGeoJson) {
     const props = f.properties || {};
     const center = props.center;
     const radius = props.screening_radius_km || 2.5;
-    if (center && checkSegmentCrossesCircle(start, end, center, radius)) {
+    if (!center) return;
+
+    // Do NOT treat origin (evacuating directly out of it) or destination (approaching shelter)
+    // as an obstacle to detour around!
+    const distFromStart = calculateHaversineKm(start[0], start[1], center[0], center[1]);
+    const distFromEnd = calculateHaversineKm(end[0], end[1], center[0], center[1]);
+    if (distFromStart <= radius * 1.15 || distFromEnd <= radius * 1.15) {
+      return;
+    }
+
+    if (checkSegmentCrossesCircle(start, end, center, radius)) {
       intersectingZones.push({ center, radius, name: props.name });
     }
   });
@@ -324,49 +334,53 @@ export async function findShortestEvacuationPath(dangerCoords, sheltersList = []
   const routePromises = topCandidates.map((s) => getEvacuationRoute(dangerCoords, s.coords, redZonesGeoJson));
   const candidateRoutes = await Promise.all(routePromises);
 
-  // 3. Find the candidate with the absolute minimum safe distance
-  let bestIndex = 0;
-  let minDistance = Infinity;
-
-  candidateRoutes.forEach((route, idx) => {
-    const dist = route ? route.distanceKm : topCandidates[idx].directKm * 1.28;
-    if (dist < minDistance) {
-      minDistance = dist;
-      bestIndex = idx;
-    }
-  });
-
-  const bestShelter = topCandidates[bestIndex];
-  const bestRoute = candidateRoutes[bestIndex];
-  const usedOffline = isBrowserOffline || (bestRoute && bestRoute.isOffline);
-
-  // 4. Create sorted list of all shelters with ranked shortest distances
-  const rankedShelters = scoredShelters.map((site, idx) => {
+  // 3. Map all shelters with accurate road routing metrics
+  const candidateShelters = scoredShelters.map((site, idx) => {
     let roadDist = site.directKm * 1.28;
     let dur = Math.round((roadDist / 35) * 60);
+    let matchedRoute = null;
 
     if (idx < topCandidates.length && candidateRoutes[idx]) {
       roadDist = candidateRoutes[idx].distanceKm;
       dur = candidateRoutes[idx].durationMinutes;
+      matchedRoute = candidateRoutes[idx];
     }
 
     return {
       ...site,
       distanceKm: parseFloat(roadDist.toFixed(1)),
       durationMinutes: Math.max(2, dur),
-      isShortest: site.id === bestShelter.id,
-      rank: idx + 1,
+      route: matchedRoute,
     };
-  }).sort((a, b) => a.distanceKm - b.distanceKm);
+  });
+
+  // 4. Sort strictly by headroom first, then by absolute shortest road distance
+  const sortedRanked = candidateShelters.sort((a, b) => {
+    if (a.hasHeadroom && !b.hasHeadroom) return -1;
+    if (!a.hasHeadroom && b.hasHeadroom) return 1;
+    return a.distanceKm - b.distanceKm;
+  });
+
+  // The true absolute #1 ideal shortest shelter is sortedRanked[0]
+  const idealShelter = sortedRanked[0];
+  const idealRoute = idealShelter.route || candidateRoutes[0] || null;
+  const usedOffline = isBrowserOffline || (idealRoute && idealRoute.isOffline);
+
+  // Attach final rank and isShortest boolean flag
+  const finalRanked = sortedRanked.map((s, rankIdx) => ({
+    ...s,
+    isShortest: rankIdx === 0,
+    rank: rankIdx + 1,
+  }));
 
   return {
     bestShelter: {
-      ...bestShelter,
-      distanceKm: bestRoute ? bestRoute.distanceKm : parseFloat((bestShelter.directKm * 1.28).toFixed(1)),
-      durationMinutes: bestRoute ? bestRoute.durationMinutes : Math.round((bestShelter.directKm / 35) * 60),
+      ...idealShelter,
+      distanceKm: idealShelter.distanceKm,
+      durationMinutes: idealShelter.durationMinutes,
     },
-    route: bestRoute,
-    rankedShelters,
+    route: idealRoute,
+    rankedShelters: finalRanked,
     isOffline: usedOffline,
   };
 }

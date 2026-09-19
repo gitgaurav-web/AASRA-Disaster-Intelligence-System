@@ -294,6 +294,16 @@ export default function CitizenRiskMap() {
     return withDistance;
   }, [shelters, selectedDistrict, facilityFilter, searchQuery, activeOriginCoords]);
 
+  // Handle Habitation / Red-Zone Marker Selection
+  const handleSelectHabitation = (hab) => {
+    setSelectedHabitation(hab);
+    setSelectedShelter(null); // Clear manual selection so it auto-selects the #1 ideal shortest path!
+    if (hab?.coords) {
+      setMapCenter(hab.coords);
+      setMapZoom(13);
+    }
+  };
+
   // Handle Shelter Card Click
   const handleSelectShelter = (site) => {
     setSelectedShelter(site);
@@ -349,14 +359,6 @@ export default function CitizenRiskMap() {
       (err) => {
         setIsLocating(false);
         console.warn("GPS location permission or timeout:", err);
-        // Graceful fallback to nearest district shelter without crashing alert
-        if (shelters.length > 0 && !selectedShelter) {
-          setSelectedShelter(shelters[0]);
-          if (shelters[0].coords) {
-            setMapCenter(shelters[0].coords);
-            setMapZoom(12);
-          }
-        }
       },
       { timeout: 12000, enableHighAccuracy: true }
     );
@@ -802,7 +804,7 @@ export default function CitizenRiskMap() {
                 redZones={redZones}
                 selectedHabitation={selectedHabitation}
                 selectedShelter={selectedShelter}
-                onSelectHabitation={setSelectedHabitation}
+                onSelectHabitation={handleSelectHabitation}
                 onSelectShelter={setSelectedShelter}
                 center={mapCenter}
                 zoom={mapZoom}

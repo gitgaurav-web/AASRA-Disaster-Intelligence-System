@@ -529,6 +529,18 @@ export default function MapView({
             })}
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
+              layer.on("click", () => {
+                if (p.habitation_id || p.name) {
+                  const matchedHab = habitations.find(
+                    (h) => h.id === p.habitation_id || h.name === p.name
+                  );
+                  if (matchedHab) {
+                    const coords = getCoords(matchedHab) || p.center;
+                    onSelectHabitation({ ...matchedHab, coords });
+                    setTargetView({ center: coords, zoom: 14 });
+                  }
+                }
+              });
               layer.bindPopup(`
                 <div style="font-size:12px; font-family:sans-serif; min-width:180px; color: inherit;">
                   <strong style="color:#d93025; font-size:13px;">⚠️ ${p.name || "Risk Screening Area"}</strong>
