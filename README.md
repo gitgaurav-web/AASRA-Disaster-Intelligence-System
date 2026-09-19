@@ -1,6 +1,8 @@
-# 🚨 AASRA — Disaster Intelligence & Multi-Hazard Decision Support System
+# 🚨 AASRA — Disaster Intelligence & Multi-Hazard Decision Support System
 
 > **AASRA (आसरा)** is a unified AI-powered multi-hazard disaster decision support system (DSS) and citizen safety network engineered for early warning, dynamic risk scoring, shelter allocation gap analysis, automated CAP alerts, and real-time tactical dispatch.
+
+---
 
 ## 🌟 Key Features
 
@@ -44,11 +46,27 @@
 | **Mapping & GIS** | Leaflet, React-Leaflet, GeoJSON, OpenStreetMap CartoDB |
 | **Backend API** | FastAPI (Python 3.11+), Uvicorn, Pydantic v2 |
 | **Emergency Standards** | OASIS Common Alerting Protocol (CAP v1.2), Web Speech API, Web Audio API |
-| **Analytics & Data** | Real EM-DAT global disaster records, Grand Super-Ensemble (XGBoost, CatBoost, LightGBM, Random Forest), Pandas, NumPy, Scikit-learn |
+| **Analytics & ML** | Real EM-DAT dataset (17,116 records), Grand Super-Ensemble (Dual-Task XGBoost, CatBoost, LightGBM, ExtraTrees, Random Forest), Nelder-Mead Optimization |
+| **Mobile Application** | Capacitor 6, Android Studio, Native Notch/Gesture Safe Area Support |
 
-## ML Training Data & Architecture
+---
 
-The model pipeline trains on the global EM-DAT disaster dataset (`ml/public_emdat_custom_request_*.xlsx`) featuring 17,116 validated events. It extracts 42 rich geospatial, meteorological, hierarchical taxonomy, and emergency response indicators. Four architectures (XGBoost, CatBoost, LightGBM, and Random Forest) are trained and combined into a weighted soft-voting Grand Super-Ensemble achieving **48.10% accuracy** and **0.7370 ROC-AUC** with **66.08% recall on critical disasters**. To retrain, run `backend\.venv\Scripts\python.exe ml/train_model.py`. All model artifacts, encoders, and evaluation metadata are stored in `ml/`.
+## 🧠 Machine Learning: Grand Super-Ensemble & Dual-Task Ordinal Regression
+
+The ML engine predicts real-time disaster severity risk (`Critical`, `High`, `Moderate`, `Low`) based on real-world global disaster historical records from the **EM-DAT** database (17,116 validated events).
+
+### Performance Benchmarks (Strict Holdout Test Set: 3,424 Samples)
+| Metric | Baseline Random Forest | Tuned CatBoost | Tuned XGBoost | Grand Super-Ensemble |
+| :--- | :---: | :---: | :---: | :---: |
+| **Overall Accuracy** | 47.49% | 47.87% | 46.96% | **48.57%** |
+| **Macro ROC-AUC** | 0.7327 | 0.7351 | 0.7342 | **0.7395 (~74.0%)** |
+| **Macro F1-Score** | 0.4701 | 0.4721 | 0.4633 | **0.4845** |
+| **Critical Precision** | 62.18% | 62.76% | 61.11% | **64.61%** |
+| **Critical F1-Score** | 0.6254 | 0.6438 | 0.6339 | **0.6423** |
+
+- **Feature Engineering 2.0**: Extracts **57 domain features** across hazard kinematics (`is_rapid_onset`), official emergency response declarations (`Declaration`, `Appeal`, `OFDA`), location terrain clues (coastal, mountain, urban), and cyclical seasonal dynamics.
+- **Dual-Task Ordinal Modeling**: Incorporates continuous percentile severity regressors calibrated via Gaussian Cumulative Distribution Functions (CDF) to penalize severe rank inversions.
+- **Read More**: Detailed feature breakdowns, mathematical formulas, and reproduction steps are documented in [`ml/README.md`](ml/README.md).
 
 ---
 
@@ -58,6 +76,7 @@ The model pipeline trains on the global EM-DAT disaster dataset (`ml/public_emda
 - **Node.js**: `v18.0.0` or higher
 - **Python**: `v3.11` or higher
 - **Git**: Installed on your system
+- **Android Studio & SDK**: (Optional, for running or building native mobile APK)
 
 ### 1. Clone the Repository
 ```bash
@@ -65,7 +84,7 @@ git clone https://github.com/gitgaurav-web/DIASTRA-Disaster-Intelligence-System.
 cd DIASTRA-Disaster-Intelligence-System
 ```
 
-### 2. Frontend Setup
+### 2. Frontend Setup (Web)
 ```bash
 # Install dependencies
 npm install
@@ -75,18 +94,17 @@ npm run dev
 ```
 > The frontend application will be live at: **`http://localhost:5173`**
 
-### 3. Backend Setup
-Open a new terminal window:
+### 3. Backend Setup (FastAPI)
 ```bash
 # Navigate to backend directory
 cd backend
 
 # Create and activate Python virtual environment
-# On Windows (PowerShell):
+# Windows (PowerShell):
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
-# On Linux/macOS:
+# Linux / macOS:
 # python3 -m venv .venv
 # source .venv/bin/activate
 
@@ -96,7 +114,23 @@ pip install -r requirements.txt
 # Start FastAPI server
 uvicorn main:app --reload --port 8000
 ```
-> Interactive API Documentation (Swagger UI): **`http://127.0.0.1:8000/docs`**
+> Interactive API Documentation (Swagger UI): **`http://127.0.0.1:8000/docs`**  
+> Complete backend guide & route index: [`backend/README.md`](backend/README.md)
+
+### 4. Mobile Application (Android APK)
+The repository includes complete native Android build support via Capacitor:
+```bash
+# Build frontend web bundle
+npm run build
+
+# Sync assets to native Android project
+npx cap sync android
+
+# Open project in Android Studio
+npx cap open android
+```
+- **Direct APK Build**: You can assemble the debug APK directly via `./gradlew assembleDebug` in the `android/` directory.
+- **Prebuilt Standalone APK**: Pre-compiled and ready for installation at `AASRA_Mobile_App.apk` (and on your Desktop).
 
 ---
 
