@@ -122,7 +122,7 @@ export default function EmergencyAlerts() {
   });
 
   // Mobile SMS Dispatch State
-  const [smsPhone, setSmsPhone] = useState(() => localStorage.getItem('aasra_sms_phone') || '');
+  const [smsPhone, setSmsPhone] = useState(() => localStorage.getItem('aasra_sms_phone') || '8544534027');
   const [smsCustomMessage, setSmsCustomMessage] = useState('');
   const [smsSending, setSmsSending] = useState(false);
   const [smsDeliveryResult, setSmsDeliveryResult] = useState(null);
@@ -135,7 +135,7 @@ export default function EmergencyAlerts() {
   const [savingGatewayKey, setSavingGatewayKey] = useState(false);
 
   // WhatsApp State
-  const [whatsappPhone, setWhatsappPhone] = useState(() => localStorage.getItem('aasra_whatsapp_phone') || '');
+  const [whatsappPhone, setWhatsappPhone] = useState(() => localStorage.getItem('aasra_whatsapp_phone') || '8544534027');
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -976,19 +976,18 @@ export default function EmergencyAlerts() {
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       <button
                         type="button"
-                        onClick={() => setSmsPhone('9876543210')}
-                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        onClick={() => setSmsPhone('8544534027')}
+                        className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-[11px] font-bold text-blue-700 dark:text-blue-300 rounded border border-blue-300 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900 transition flex items-center gap-1"
                       >
-                        + Use Sample Number (9876543210)
+                        🎯 +91 8544534027 (Your Registered Mobile)
                       </button>
-                      <span className="text-slate-300 dark:text-slate-600">|</span>
                       <button
                         type="button"
-                        onClick={() => setSmsPhone('9876543210, 9123456780, 9988776655')}
-                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                        onClick={() => setSmsPhone('8544534027, 9876543210, 9123456780')}
+                        className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:underline"
                       >
                         + Add Multi-Citizen Broadcast Batch
                       </button>
