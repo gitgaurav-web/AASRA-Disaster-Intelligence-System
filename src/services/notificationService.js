@@ -70,7 +70,7 @@ export function playEmergencyAlertChime(type = 'warning') {
 /**
  * Request browser notification permission and register token to backend
  */
-export async function requestNotificationPermission(subscriberName = 'Citizen Device', district = 'All Districts') {
+export async function requestNotificationPermission(subscriberName = 'Citizen Device', district = 'All Districts', phoneNumber = null) {
   if (!isNotificationSupported()) {
     throw new Error('Notifications are not supported in this browser.');
   }
@@ -90,6 +90,7 @@ export async function requestNotificationPermission(subscriberName = 'Citizen De
       body: JSON.stringify({
         subscriber_name: subscriberName,
         token: token,
+        phone_number: phoneNumber,
         district: district,
         alert_rain: true,
         alert_flood: true,
@@ -103,6 +104,7 @@ export async function requestNotificationPermission(subscriberName = 'Citizen De
         body: JSON.stringify({
           subscriber_name: subscriberName,
           token: token,
+          phone_number: phoneNumber,
           district: district,
           alert_rain: true,
           alert_flood: true,
@@ -290,5 +292,117 @@ export function downloadCAPAlertFile(alertData = {}, format = 'xml') {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Send real emergency SMS via Fast2SMS Indian Bulk Gateway or PRI Carrier Route
+ */
+export async function sendRealSMSAlert({ phoneNumbers, message, hazardType = 'Disaster Alert', district = 'Chamoli', apiKey = null, saveKey = false }) {
+  const payload = {
+    phone_numbers: Array.isArray(phoneNumbers) ? phoneNumbers : [phoneNumbers],
+    message: message || '',
+    hazard_type: hazardType,
+    district: district,
+    api_key: apiKey || null,
+    save_key: Boolean(saveKey),
+  };
+
+  let res = await fetch('/api/notifications/send-sms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => null);
+
+  if (!res || !res.ok) {
+    res = await fetch('http://127.0.0.1:8000/api/notifications/send-sms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to send SMS' }));
+    throw new Error(errorData.detail || 'SMS dispatch request failed');
+  }
+
+  return await res.json();
+}
+
+/**
+ * Check configuration status of SMS Gateway (Fast2SMS)
+ */
+export async function getSMSGatewayConfig() {
+  let res = await fetch('/api/notifications/gateway-config').catch(() => null);
+  if (!res || !res.ok) {
+    res = await fetch('http://127.0.0.1:8000/api/notifications/gateway-config').catch(() => null);
+  }
+  if (!res || !res.ok) return { configured: false, provider: 'Fast2SMS India', masked_key: null };
+  return await res.json();
+}
+
+/**
+ * Save or remove Fast2SMS API Key
+ */
+export async function saveSMSGatewayConfig(apiKey) {
+  let res = await fetch('/api/notifications/gateway-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fast2sms_api_key: apiKey }),
+  }).catch(() => null);
+
+  if (!res || !res.ok) {
+    res = await fetch('http://127.0.0.1:8000/api/notifications/gateway-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fast2sms_api_key: apiKey }),
+    });
+  }
+
+  if (!res.ok) throw new Error('Failed to update SMS gateway configuration');
+  return await res.json();
+}
+
+/**
+ * Format emergency alert into structured WhatsApp advisory message
+ */
+export function formatWhatsAppMessage({ title, message, district, shelterName, hazardType }) {
+  const icon = hazardType === 'Rain' ? '🌧️' : hazardType === 'Flood' ? '🌊' : hazardType === 'Earthquake' ? '💥' : '⚠️';
+  return (
+    `🚨 *AASRA DISASTER EARLY WARNING DIRECTIVE* 🚨\n\n` +
+    `${icon} *Hazard:* ${hazardType || 'Multi-Hazard Event'}\n` +
+    `📍 *Sector / District:* ${district || 'Affected Zone'}\n` +
+    `⚠️ *Directive:* ${title || 'Immediate Evacuation Warning'}\n\n` +
+    `📝 *Action Advisory:* ${message || 'Move immediately to nearest high-ground safe shelter. Avoid riverbanks and vulnerable structures.'}\n\n` +
+    `🏛️ *Designated Shelter:* ${shelterName || 'Government Inter College / Community Relief Center'}\n` +
+    `📞 *Emergency Helpline:* 1077 (Toll-Free) / 112\n\n` +
+    `_Dispatched via National Disaster Decision Support System (NDMA CAP v1.2 Compliant)_`
+  );
+}
+
+/**
+ * Generate 1-click WhatsApp deep link
+ */
+export function generateWhatsAppEmergencyLink({ phoneNumber, title, message, district, shelterName, hazardType }) {
+  const formattedText = formatWhatsAppMessage({ title, message, district, shelterName, hazardType });
+  const encoded = encodeURIComponent(formattedText);
+
+  if (phoneNumber) {
+    const cleaned = String(phoneNumber).replace(/\D/g, '');
+    const finalPhone = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+    return `https://wa.me/${finalPhone}?text=${encoded}`;
+  }
+  return `https://api.whatsapp.com/send?text=${encoded}`;
+}
+
+/**
+ * Trigger opening WhatsApp alert in browser or app
+ */
+export function triggerWhatsAppAlert(params) {
+  const link = generateWhatsAppEmergencyLink(params);
+  if (typeof window !== 'undefined') {
+    window.open(link, '_blank', 'noopener,noreferrer');
+  }
+  return link;
 }
 

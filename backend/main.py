@@ -12,13 +12,19 @@ import json
 import math
 import sqlite3
 import time
+import os
 import urllib.request
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+try:
+    from backend.sms_service import dispatch_emergency_sms, normalize_indian_phone, parse_phone_numbers
+except ImportError:
+    from sms_service import dispatch_emergency_sms, normalize_indian_phone, parse_phone_numbers
 
 from ml.ml_engine import predict_risk_ml, ml_model_available
 from risk_engine import calculate_risk_score, get_relocation_priority, get_risk_level
@@ -1282,6 +1288,7 @@ def _init_notification_database():
                 id INTEGER PRIMARY KEY,
                 subscriber_name TEXT NOT NULL,
                 token TEXT NOT NULL UNIQUE,
+                phone_number TEXT,
                 district TEXT,
                 alert_rain INTEGER DEFAULT 1,
                 alert_flood INTEGER DEFAULT 1,
@@ -1290,6 +1297,12 @@ def _init_notification_database():
                 created_at INTEGER NOT NULL
             )
         """)
+        # Safe migration if table already existed without phone_number
+        try:
+            conn.execute("ALTER TABLE notification_subscribers ADD COLUMN phone_number TEXT")
+        except Exception:
+            pass
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS notification_logs (
                 id INTEGER PRIMARY KEY,
@@ -1298,7 +1311,30 @@ def _init_notification_database():
                 title TEXT NOT NULL,
                 message TEXT NOT NULL,
                 target_district TEXT,
-                dispatched_at INTEGER NOT NULL
+                dispatched_at INTEGER NOT NULL,
+                channel TEXT DEFAULT 'WEB_DESKTOP',
+                recipient TEXT DEFAULT 'ALL',
+                status TEXT DEFAULT 'DELIVERED'
+            )
+        """)
+        try:
+            conn.execute("ALTER TABLE notification_logs ADD COLUMN channel TEXT DEFAULT 'WEB_DESKTOP'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE notification_logs ADD COLUMN recipient TEXT DEFAULT 'ALL'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE notification_logs ADD COLUMN status TEXT DEFAULT 'DELIVERED'")
+        except Exception:
+            pass
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS gateway_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
             )
         """)
 
@@ -1308,6 +1344,7 @@ _init_notification_database()
 class NotificationSubscribeRequest(BaseModel):
     subscriber_name: str = Field(default="Citizen Device")
     token: str
+    phone_number: Optional[str] = None
     district: Optional[str] = Field(default="All Districts")
     alert_rain: bool = True
     alert_flood: bool = True
@@ -1317,14 +1354,16 @@ class NotificationSubscribeRequest(BaseModel):
 
 @app.post("/api/notifications/subscribe")
 def subscribe_notifications(req: NotificationSubscribeRequest):
-    """Register citizen or incident commander device token for Web Push & FCM."""
+    """Register citizen or incident commander device token for Web Push & SMS alerts."""
     now_ms = int(time.time() * 1000)
+    norm_phone = normalize_indian_phone(req.phone_number) if req.phone_number else None
     with _community_connection() as conn:
         conn.execute("""
-            INSERT INTO notification_subscribers (subscriber_name, token, district, alert_rain, alert_flood, alert_earthquake, alert_landslide, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO notification_subscribers (subscriber_name, token, phone_number, district, alert_rain, alert_flood, alert_earthquake, alert_landslide, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(token) DO UPDATE SET
                 subscriber_name = excluded.subscriber_name,
+                phone_number = COALESCE(excluded.phone_number, notification_subscribers.phone_number),
                 district = excluded.district,
                 alert_rain = excluded.alert_rain,
                 alert_flood = excluded.alert_flood,
@@ -1332,7 +1371,7 @@ def subscribe_notifications(req: NotificationSubscribeRequest):
                 alert_landslide = excluded.alert_landslide,
                 created_at = excluded.created_at
         """, (
-            req.subscriber_name, req.token, req.district or "All Districts",
+            req.subscriber_name, req.token, norm_phone, req.district or "All Districts",
             1 if req.alert_rain else 0,
             1 if req.alert_flood else 0,
             1 if req.alert_earthquake else 0,
@@ -1344,6 +1383,7 @@ def subscribe_notifications(req: NotificationSubscribeRequest):
         "status": "success",
         "message": "Device registered for multi-hazard emergency alerts.",
         "token": req.token,
+        "phone_number": norm_phone,
         "district": req.district
     }
 
@@ -1397,8 +1437,8 @@ def dispatch_test_alert(req: TestAlertRequest):
 
     with _community_connection() as conn:
         conn.execute("""
-            INSERT INTO notification_logs (hazard_type, severity, title, message, target_district, dispatched_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO notification_logs (hazard_type, severity, title, message, target_district, dispatched_at, channel, recipient, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'WEB_DESKTOP', 'ALL_ACTIVE_DEVICES', 'DELIVERED')
         """, (req.hazard_type, alert_data["severity"], alert_data["title"], alert_data["message"], dist, now_ms))
 
     return {
@@ -1412,6 +1452,144 @@ def dispatch_test_alert(req: TestAlertRequest):
             "district": dist,
             "timestamp": now_ms
         }
+    }
+
+
+# ==========================================
+# 4. EMERGENCY BULK SMS & TELECOM DISPATCH ENGINE
+# ==========================================
+class SendSMSRequest(BaseModel):
+    phone_numbers: List[str] = Field(default_factory=list)
+    message: Optional[str] = ""
+    hazard_type: Optional[str] = "Disaster Alert"
+    district: Optional[str] = "Chamoli"
+    api_key: Optional[str] = None
+    save_key: Optional[bool] = False
+
+
+@app.post("/api/notifications/send-sms")
+def send_mobile_sms(req: SendSMSRequest):
+    """
+    Directly dispatch emergency SMS to Indian mobile numbers via Fast2SMS Gateway or PRI Carrier Route.
+    Supports single or multiple phone numbers, with realistic carrier simulation fallback.
+    """
+    now_ms = int(time.time() * 1000)
+
+    # Retrieve stored API key if exists
+    saved_key = None
+    with _community_connection() as conn:
+        row = conn.execute("SELECT value FROM gateway_settings WHERE key = 'fast2sms_api_key'").fetchone()
+        if row:
+            saved_key = row["value"]
+
+    # If save_key requested and api_key passed, persist it
+    if req.save_key and req.api_key and len(req.api_key.strip()) > 8:
+        with _community_connection() as conn:
+            conn.execute("""
+                INSERT INTO gateway_settings (key, value, updated_at)
+                VALUES ('fast2sms_api_key', ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            """, (req.api_key.strip(), now_ms))
+        saved_key = req.api_key.strip()
+
+    # If phone_numbers is empty, look up registered subscriber phones in district
+    targets = req.phone_numbers
+    if not targets or len(targets) == 0:
+        with _community_connection() as conn:
+            if req.district and req.district != "All Districts":
+                sub_rows = conn.execute(
+                    "SELECT phone_number FROM notification_subscribers WHERE phone_number IS NOT NULL AND district = ?",
+                    (req.district,)
+                ).fetchall()
+            else:
+                sub_rows = conn.execute(
+                    "SELECT phone_number FROM notification_subscribers WHERE phone_number IS NOT NULL"
+                ).fetchall()
+            targets = [r["phone_number"] for r in sub_rows if r["phone_number"]]
+
+    if not targets:
+        raise HTTPException(
+            status_code=400,
+            detail="No mobile numbers provided and no registered citizen phone numbers found for this sector."
+        )
+
+    # Dispatch SMS
+    result = dispatch_emergency_sms(
+        phone_numbers=targets,
+        message=req.message or "",
+        hazard_type=req.hazard_type or "Disaster Alert",
+        district=req.district or "Affected Area",
+        custom_api_key=req.api_key,
+        saved_api_key=saved_key
+    )
+
+    # Log dispatch
+    recipient_str = ",".join(result.get("numbers", targets))
+    status_str = "DELIVERED" if result.get("success") else "FAILED"
+    with _community_connection() as conn:
+        conn.execute("""
+            INSERT INTO notification_logs (hazard_type, severity, title, message, target_district, dispatched_at, channel, recipient, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            req.hazard_type or "SMS_ALERT",
+            "Critical" if "CRITICAL" in (req.message or "").upper() else "High",
+            f"📱 SMS Broadcast to {len(result.get('numbers', targets))} recipient(s)",
+            result.get("message", req.message or ""),
+            req.district or "All Districts",
+            now_ms,
+            "SMS",
+            recipient_str[:250],
+            status_str
+        ))
+
+    return result
+
+
+class GatewayConfigRequest(BaseModel):
+    fast2sms_api_key: Optional[str] = None
+
+
+@app.get("/api/notifications/gateway-config")
+def get_gateway_config():
+    """Check configuration status of SMS Gateway (Fast2SMS)."""
+    with _community_connection() as conn:
+        row = conn.execute("SELECT value FROM gateway_settings WHERE key = 'fast2sms_api_key'").fetchone()
+
+    env_key = os.getenv("FAST2SMS_API_KEY")
+    active_key = (row["value"] if row else None) or env_key
+
+    is_configured = bool(active_key and len(active_key) > 8)
+    masked = f"{active_key[:4]}...{active_key[-4:]}" if is_configured and len(active_key) >= 8 else None
+
+    return {
+        "configured": is_configured,
+        "provider": "Fast2SMS India",
+        "masked_key": masked,
+        "default_route": "Quick SMS (Route Q - Instant TRAI DLT)",
+        "source": "database" if row else ("env" if env_key else "none")
+    }
+
+
+@app.post("/api/notifications/gateway-config")
+def set_gateway_config(req: GatewayConfigRequest):
+    """Save or clear Fast2SMS API key in local persistent settings."""
+    now_ms = int(time.time() * 1000)
+    with _community_connection() as conn:
+        if req.fast2sms_api_key and req.fast2sms_api_key.strip():
+            conn.execute("""
+                INSERT INTO gateway_settings (key, value, updated_at)
+                VALUES ('fast2sms_api_key', ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            """, (req.fast2sms_api_key.strip(), now_ms))
+            configured = True
+        else:
+            conn.execute("DELETE FROM gateway_settings WHERE key = 'fast2sms_api_key'")
+            configured = False
+
+    return {
+        "status": "success",
+        "configured": configured,
+        "message": "Fast2SMS API gateway configuration updated."
     }
 
 
@@ -1456,8 +1634,8 @@ def evaluate_and_trigger_hazard_alerts():
     with _community_connection() as conn:
         for a in unique_alerts[:4]:
             conn.execute("""
-                INSERT INTO notification_logs (hazard_type, severity, title, message, target_district, dispatched_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO notification_logs (hazard_type, severity, title, message, target_district, dispatched_at, channel, recipient, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'AUTO_EVALUATOR', 'ALL_SUBSCRIBERS', 'DELIVERED')
             """, (a["hazard_type"], a["severity"], a["title"], a["message"], a["district"], now_ms))
 
     return {
@@ -1472,5 +1650,5 @@ def evaluate_and_trigger_hazard_alerts():
 def get_notification_history():
     """Retrieve history of dispatched emergency notifications."""
     with _community_connection() as conn:
-        rows = conn.execute("SELECT * FROM notification_logs ORDER BY dispatched_at DESC LIMIT 25").fetchall()
+        rows = conn.execute("SELECT * FROM notification_logs ORDER BY dispatched_at DESC LIMIT 30").fetchall()
     return [dict(r) for r in rows]

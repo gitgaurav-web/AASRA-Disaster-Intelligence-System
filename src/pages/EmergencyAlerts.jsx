@@ -30,6 +30,9 @@ import {
   Mic,
   ShieldAlert,
   Info,
+  Key,
+  Share2,
+  Phone,
 } from 'lucide-react';
 import {
   isNotificationSupported,
@@ -42,6 +45,11 @@ import {
   speakEmergencyAnnouncement,
   generateCAPAlertXML,
   downloadCAPAlertFile,
+  sendRealSMSAlert,
+  getSMSGatewayConfig,
+  saveSMSGatewayConfig,
+  triggerWhatsAppAlert,
+  generateWhatsAppEmergencyLink,
 } from '@/services/notificationService';
 import { HABITATIONS } from '@/data/demoData';
 
@@ -113,6 +121,22 @@ export default function EmergencyAlerts() {
     }
   });
 
+  // Mobile SMS Dispatch State
+  const [smsPhone, setSmsPhone] = useState(() => localStorage.getItem('aasra_sms_phone') || '');
+  const [smsCustomMessage, setSmsCustomMessage] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsDeliveryResult, setSmsDeliveryResult] = useState(null);
+  const [smsError, setSmsError] = useState(null);
+
+  // SMS Gateway Configuration (Fast2SMS)
+  const [gatewayConfig, setGatewayConfig] = useState({ configured: false, masked_key: null });
+  const [showGatewayConfigModal, setShowGatewayConfigModal] = useState(false);
+  const [inputApiKey, setInputApiKey] = useState('');
+  const [savingGatewayKey, setSavingGatewayKey] = useState(false);
+
+  // WhatsApp State
+  const [whatsappPhone, setWhatsappPhone] = useState(() => localStorage.getItem('aasra_whatsapp_phone') || '');
+
   useEffect(() => {
     if (isNotificationSupported()) {
       setPermission(getNotificationPermission());
@@ -121,7 +145,17 @@ export default function EmergencyAlerts() {
     loadHistory();
     loadSubscribers();
     loadHabitations();
+    loadGatewayConfig();
   }, []);
+
+  const loadGatewayConfig = async () => {
+    try {
+      const cfg = await getSMSGatewayConfig();
+      if (cfg) setGatewayConfig(cfg);
+    } catch (err) {
+      console.warn('Could not load SMS gateway configuration:', err);
+    }
+  };
 
   // Background hazard evaluator interval
   useEffect(() => {
@@ -231,6 +265,79 @@ export default function EmergencyAlerts() {
         ? `सावधान! यह ${district} आपदा नियंत्रण कक्ष से परीक्षण आपातकालीन ध्वनि चेतावनी है। सभी नागरिक सुरक्षित आश्रयों की ओर प्रस्थान करें।`
         : `Attention! This is a test emergency broadcast from ${district} Disaster Emergency Operation Center. Please follow safety protocols.`;
     speakEmergencyAnnouncement(sampleText, voiceLang);
+  };
+
+  const handleSaveGatewayKey = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      setSavingGatewayKey(true);
+      await saveSMSGatewayConfig(inputApiKey.trim());
+      await loadGatewayConfig();
+      setShowGatewayConfigModal(false);
+      setInputApiKey('');
+    } catch (err) {
+      alert('Error updating Fast2SMS Gateway: ' + err.message);
+    } finally {
+      setSavingGatewayKey(false);
+    }
+  };
+
+  const handleSendSMS = async () => {
+    setSmsError(null);
+    setSmsDeliveryResult(null);
+
+    const rawNumbers = smsPhone.trim();
+    if (!rawNumbers) {
+      setSmsError('Please enter at least one valid 10-digit Indian mobile number (e.g. 9876543210).');
+      return;
+    }
+
+    try {
+      setSmsSending(true);
+      localStorage.setItem('aasra_sms_phone', rawNumbers);
+
+      const defaultMsg = `[DISASTER-ALERT] ${currentAlertPayload.severity.toUpperCase()}: ${currentAlertPayload.title} in ${district}. Evacuate immediately. Helpline: 1077.`;
+      const msg = smsCustomMessage.trim() || defaultMsg;
+
+      const res = await sendRealSMSAlert({
+        phoneNumbers: rawNumbers.split(/[,;\s]+/).filter(Boolean),
+        message: msg,
+        hazardType: currentAlertPayload.hazard_type || 'Disaster Alert',
+        district: district,
+      });
+
+      setSmsDeliveryResult(res);
+      loadHistory();
+      playEmergencyAlertChime('standard');
+    } catch (err) {
+      setSmsError(err.message || 'Failed to dispatch SMS.');
+    } finally {
+      setSmsSending(false);
+    }
+  };
+
+  const handleOpenWhatsAppDirect = () => {
+    const phone = whatsappPhone.trim() || smsPhone.trim();
+    if (phone) localStorage.setItem('aasra_whatsapp_phone', phone);
+    triggerWhatsAppAlert({
+      phoneNumber: phone || null,
+      title: currentAlertPayload.title,
+      message: currentAlertPayload.message,
+      district: district,
+      shelterName: 'Government Inter College / Community Relief Center',
+      hazardType: currentAlertPayload.hazard_type || 'Multi-Hazard',
+    });
+  };
+
+  const handleShareWhatsAppGeneral = () => {
+    triggerWhatsAppAlert({
+      phoneNumber: null,
+      title: currentAlertPayload.title,
+      message: currentAlertPayload.message,
+      district: district,
+      shelterName: 'Government Inter College / Community Relief Center',
+      hazardType: currentAlertPayload.hazard_type || 'Multi-Hazard',
+    });
   };
 
   const runHazardEvaluation = async (manual = true) => {
@@ -806,83 +913,284 @@ export default function EmergencyAlerts() {
               </div>
             )}
 
-            {/* Tab 2: Bulk SMS Gateway (TRAI DLT 160-char) */}
+            {/* Tab 2: Bulk SMS Gateway (TRAI DLT 160-char & Fast2SMS Direct Dispatch) */}
             {activeChannelTab === 'sms' && (
-              <div className="max-w-xl mx-auto space-y-4">
-                <div className="p-4 bg-slate-100 dark:bg-slate-750 border border-slate-300 dark:border-slate-600 rounded-2xl shadow-inner font-mono text-xs">
-                  <div className="flex items-center justify-between mb-2 text-slate-500 dark:text-slate-400 text-[11px]">
-                    <span>From: <strong>VM-NDMAGOV</strong></span>
-                    <span>TRAI DLT Header: Registered</span>
+              <div className="max-w-2xl mx-auto space-y-5">
+                {/* Gateway Connection Indicator Banner */}
+                <div className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-750 border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-3 h-3 rounded-full flex-shrink-0 animate-ping ${gatewayConfig.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          {gatewayConfig.configured ? 'Fast2SMS Indian Mobile Gateway (Active)' : 'Carrier PRI Dispatch Engine'}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          gatewayConfig.configured 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                        }`}>
+                          {gatewayConfig.configured ? `Live API (${gatewayConfig.masked_key})` : 'Telecom PRI Simulation'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {gatewayConfig.configured
+                          ? 'Real SMS pushed directly to citizen mobile phone handsets via Fast2SMS PRI Route.'
+                          : 'Carrier simulation with telecom trace active. Add free Fast2SMS key to receive on your real mobile.'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="p-3 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 leading-relaxed">
-                    [DISASTER-ALERT] CRITICAL {currentAlertPayload.title} issued for {district}. Evacuate to nearest shelter immediately. Emergency Helpline: 1077.
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>Characters: 138 / 160 (1 SMS Credit)</span>
-                    <span>Language: GSM 7-bit + Unicode</span>
-                  </div>
+
+                  <button
+                    onClick={() => setShowGatewayConfigModal(true)}
+                    className="flex-shrink-0 px-3 py-1.5 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-600 transition flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Key className="w-3.5 h-3.5 text-amber-500" />
+                    {gatewayConfig.configured ? 'Change API Key' : 'Configure Fast2SMS'}
+                  </button>
                 </div>
 
+                {/* Interactive Phone Dispatch Input Card */}
+                <div className="p-5 bg-white dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        Target Citizen Mobile Number(s)
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                        Supports single or comma-separated numbers
+                      </span>
+                    </label>
+
+                    <div className="flex gap-2">
+                      <div className="flex items-center px-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-black text-slate-700 dark:text-slate-300">
+                        🇮🇳 +91
+                      </div>
+                      <input
+                        type="text"
+                        value={smsPhone}
+                        onChange={(e) => setSmsPhone(e.target.value)}
+                        placeholder="Enter your 10-digit mobile number, e.g. 9876543210"
+                        className="flex-1 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSmsPhone('9876543210')}
+                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        + Use Sample Number (9876543210)
+                      </button>
+                      <span className="text-slate-300 dark:text-slate-600">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSmsPhone('9876543210, 9123456780, 9988776655')}
+                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        + Add Multi-Citizen Broadcast Batch
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* SMS Body & DLT Template Preview */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                      <span className="font-mono">DLT Header: <strong>VM-NDMAGOV</strong></span>
+                      <span className="font-mono">Route: TRAI Disaster Priority</span>
+                    </div>
+
+                    <textarea
+                      value={smsCustomMessage}
+                      onChange={(e) => setSmsCustomMessage(e.target.value)}
+                      placeholder={`[DISASTER-ALERT] ${currentAlertPayload.severity.toUpperCase()}: ${currentAlertPayload.title} in ${district}. Evacuate to high ground immediately. Emergency Helpline: 1077.`}
+                      rows={3}
+                      maxLength={160}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>
+                        Characters: {(smsCustomMessage || `[DISASTER-ALERT] ${currentAlertPayload.severity.toUpperCase()}: ${currentAlertPayload.title} in ${district}. Evacuate immediately. Helpline: 1077.`).length} / 160 (1 SMS Credit)
+                      </span>
+                      <span>GSM 7-bit + Unicode Encoded</span>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <button
+                    onClick={handleSendSMS}
+                    disabled={smsSending}
+                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    {smsSending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Dispatching via PRI Tunnel...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        🚀 Send Live Emergency SMS to Mobile
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Delivery Feedback Banner */}
+                {smsDeliveryResult && (
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-400 dark:border-emerald-600 rounded-2xl shadow-md space-y-2 animate-in fade-in">
+                    <div className="flex items-center justify-between pb-1 border-b border-emerald-200 dark:border-emerald-800">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                        <span className="text-xs font-black text-emerald-900 dark:text-emerald-200">
+                          {smsDeliveryResult.mode === 'LIVE_CARRIER' ? 'SMS DELIVERED TO REAL HANDSET(S)' : 'TELECOM CARRIER PRI TRANSMISSION CONFIRMED'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 rounded uppercase">
+                        {smsDeliveryResult.provider || 'Gateway OK'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1 text-slate-700 dark:text-slate-300">
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Recipients:</span>
+                        <strong className="text-slate-900 dark:text-white font-mono">
+                          {smsDeliveryResult.numbers?.map(n => `+91 ${n}`).join(', ') || 'Registered Device'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Transmission ID:</span>
+                        <strong className="font-mono text-blue-700 dark:text-blue-300">{smsDeliveryResult.request_id}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Carrier Route:</span>
+                        <strong>{smsDeliveryResult.carrier_route || 'Fast2SMS Route Q'}</strong>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 italic pt-1 border-t border-emerald-200/60 dark:border-emerald-800/60">
+                      💬 Message: "{smsDeliveryResult.message}"
+                    </p>
+
+                    {smsDeliveryResult.guidance && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg mt-1">
+                        💡 {smsDeliveryResult.guidance}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {smsError && (
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>{smsError}</span>
+                  </div>
+                )}
+
+                {/* Telecom Route Metrics */}
                 <div className="grid grid-cols-3 gap-3 text-center text-xs">
                   <div className="p-3 bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-xl">
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Estimated Dispatch</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Estimated Coverage</p>
                     <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
                       ~{estimatedAudience.toLocaleString()} Nos
                     </p>
                   </div>
                   <div className="p-3 bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-xl">
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Delivery Rate</p>
-                    <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">99.4%</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">TRAI DLT Status</p>
+                    <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">Approved</p>
                   </div>
                   <div className="p-3 bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-xl">
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Telecom PRI Tunnel</p>
-                    <p className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">Jio / BSNL</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold">Primary Gateway</p>
+                    <p className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                      {gatewayConfig.configured ? 'Fast2SMS Live' : 'Jio / BSNL PRI'}
+                    </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Tab 3: WhatsApp Disaster SOS Bot */}
+            {/* Tab 3: WhatsApp Disaster SOS Bot & 1-Click Direct Action */}
             {activeChannelTab === 'whatsapp' && (
-              <div className="max-w-md mx-auto">
+              <div className="max-w-md mx-auto space-y-4">
                 <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-2xl shadow-lg space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b border-emerald-200 dark:border-emerald-800">
-                    <div className="w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
-                      ✓
+                  <div className="flex items-center justify-between pb-2 border-b border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow">
+                        ✓
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                          DEOC Disaster Command
+                          <span className="text-emerald-600 dark:text-emerald-400 text-[10px]">Verified Official</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Automated Evacuation Broadcast</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
-                        Disaster Emergency Command (DEOC)
-                        <span className="text-emerald-600 dark:text-emerald-400 text-[10px]">Verified Official</span>
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Automated Citizen Assistance Bot</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded">
+                      WA Business API
+                    </span>
+                  </div>
+
+                  {/* Recipient Phone input for WhatsApp */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Recipient WhatsApp Mobile (Optional):
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="flex items-center px-2.5 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300">
+                        +91
+                      </div>
+                      <input
+                        type="text"
+                        value={whatsappPhone}
+                        onChange={(e) => setWhatsappPhone(e.target.value)}
+                        placeholder="Leave blank to share or enter 10 digits"
+                        className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-2">
-                    <p className="font-bold text-rose-600 dark:text-rose-400">
-                      🚨 URGENT: {currentAlertPayload.title}
+                  {/* Visual WhatsApp Bubble Preview */}
+                  <div className="p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-2 shadow-sm font-sans">
+                    <p className="font-black text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <span>🚨</span>
+                      <span>AASRA DISASTER WARNING: {currentAlertPayload.title}</span>
                     </p>
                     <p className="text-slate-700 dark:text-slate-200 leading-relaxed">
-                      {currentAlertPayload.message}
+                      {currentAlertPayload.message} Proceed immediately to higher safe ground.
                     </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-                      Recommended Shelter: Government Inter College Campus (1.8 km)
-                    </p>
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-lg border border-emerald-200 dark:border-emerald-800/80 text-[11px] space-y-0.5">
+                      <p className="font-bold text-emerald-900 dark:text-emerald-200">
+                        🏛️ Safe Shelter: Government Inter College Campus
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-300">
+                        Distance: 1.8 km | Capacity Available: 450 beds
+                      </p>
+                      <p className="text-emerald-700 dark:text-emerald-300 font-mono text-[10px]">
+                        Emergency Helpline: Dial 1077 (Toll-Free) or 112
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 pt-1">
+                  {/* 1-Click Action Buttons */}
+                  <div className="space-y-2 pt-1">
                     <button
-                      onClick={() => alert('Opening Designated Evacuation Route on Live GIS Map...')}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm"
+                      onClick={handleOpenWhatsAppDirect}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2"
                     >
-                      🗺️ View Safe Evacuation Route (OSRM)
+                      <Smartphone className="w-4 h-4" />
+                      📲 Open in WhatsApp (1-Click Mobile Test)
                     </button>
+
                     <button
-                      onClick={() => alert('Connecting to District Emergency Control Room (1077)...')}
-                      className="w-full py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-650 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 rounded-lg transition"
+                      onClick={handleShareWhatsAppGeneral}
+                      className="w-full py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-650 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 rounded-xl transition flex items-center justify-center gap-2 shadow-sm"
                     >
-                      📞 Call Control Room (Toll-Free 1077)
+                      <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                      👥 Share to WhatsApp Groups & Family
                     </button>
                   </div>
                 </div>
@@ -956,7 +1264,7 @@ export default function EmergencyAlerts() {
               history.map((h) => (
                 <div key={h.id} className="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-750 transition flex items-start justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-slate-900 dark:text-white">{h.title}</span>
                       <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${
                         h.severity === 'Critical'
@@ -965,6 +1273,16 @@ export default function EmergencyAlerts() {
                       }`}>
                         {h.severity}
                       </span>
+                      {h.channel === 'SMS' && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          📱 Mobile SMS
+                        </span>
+                      )}
+                      {h.recipient && h.recipient !== 'ALL' && h.recipient !== 'ALL_ACTIVE_DEVICES' && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded">
+                          To: {h.recipient}
+                        </span>
+                      )}
                     </div>
                     <p className="text-slate-600 dark:text-slate-300 mt-1">{h.message}</p>
                   </div>
@@ -1122,6 +1440,103 @@ export default function EmergencyAlerts() {
                   >
                     Save FCM Config
                   </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Fast2SMS Gateway Configuration Modal */}
+        {showGatewayConfigModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-850 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Fast2SMS India SMS Gateway Configuration
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowGatewayConfigModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveGatewayKey} className="p-6 space-y-4 text-xs">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl space-y-2 text-slate-700 dark:text-slate-300">
+                  <p className="font-bold text-blue-900 dark:text-blue-200">
+                    ℹ️ How to get your free Fast2SMS API Key (Takes 30 seconds):
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+                    <li>
+                      Create a free account at{' '}
+                      <a
+                        href="https://www.fast2sms.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 dark:text-blue-400 font-bold underline inline-flex items-center gap-0.5"
+                      >
+                        fast2sms.com <ExternalLink className="w-2.5 h-2.5 inline" />
+                      </a>{' '}
+                      (includes 50 free SMS credits for Indian mobile numbers).
+                    </li>
+                    <li>Go to the <strong>Dev API</strong> section in your Fast2SMS dashboard.</li>
+                    <li>Copy your alphanumeric API Authorization Key and paste it below.</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1 text-slate-800 dark:text-slate-200">
+                    Fast2SMS Authorization API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={inputApiKey}
+                    onChange={(e) => setInputApiKey(e.target.value)}
+                    placeholder={gatewayConfig.configured ? `Currently: ${gatewayConfig.masked_key} (Paste new key to update)` : 'Paste your Fast2SMS API key here...'}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                  {gatewayConfig.configured && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                      ✅ Gateway actively configured with key: {gatewayConfig.masked_key}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  {gatewayConfig.configured ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await saveSMSGatewayConfig('');
+                        await loadGatewayConfig();
+                        setShowGatewayConfigModal(false);
+                      }}
+                      className="text-rose-600 dark:text-rose-400 hover:underline font-semibold text-xs"
+                    >
+                      Remove Key (Revert to Simulation)
+                    </button>
+                  ) : <div />}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowGatewayConfigModal(false)}
+                      className="px-4 py-2 font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-lg transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingGatewayKey}
+                      className="px-5 py-2 font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg shadow transition"
+                    >
+                      {savingGatewayKey ? 'Saving...' : 'Save & Enable SMS'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

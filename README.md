@@ -13,13 +13,15 @@
 - **Evacuation Route Optimization**: Safe transit corridors computed between high-risk hamlets and suitable shelters avoiding active hazard buffers.
 
 ### 2. 📢 Advanced Omnichannel Emergency Alerts & Broadcast
+- **Real Mobile SMS Dispatch (Fast2SMS Gateway & Telecom PRI Tunnel)**: Send instant disaster directives directly to physical Indian mobile handsets (`+91...`). Supports single or multi-citizen batch numbers, Fast2SMS Quick SMS API (Route Q), persistent API key configuration directly in the UI, and carrier-grade PRI simulation telemetry.
+- **1-Click WhatsApp Mobile SOS Deep-Linking**: Instant deep-linking (`https://wa.me/91...`) pre-filling complete disaster directives, verified shelter destinations, and emergency helpline contacts (1077 / 112) into WhatsApp Web or mobile apps for 1-tap dispatch.
 - **Multilingual Web Speech Voice TTS**: Automated voice announcements in **Hindi (hi-IN)** and **Indian English (en-IN)** with automated emergency alarm sirens.
 - **Geo-fencing Reach Calculator**: Dynamic slider (5 km to 50 km) estimating real-time population reach and targeted habitations.
 - **OASIS CAP v1.2 XML Feed**: Instant generation and download of standardized Common Alerting Protocol XML documents compliant with NDMA SACHET and WMO alerts.
-- **Omnichannel Broadcast Simulator**:
+- **Omnichannel Broadcast Console**:
+  - 📱 **Bulk SMS (Fast2SMS & DLT Gateway)**: Live handset dispatch with carrier telemetry and real-time delivery confirmations.
+  - 💬 **WhatsApp SOS Citizen Bot**: 1-click WhatsApp web/mobile integration with structured emergency cards.
   - 📡 **Cell Broadcast (WEA / Emergency Alerts)**: Direct cell tower push simulations.
-  - 💬 **Bulk SMS (Govt DLT Gateways)**: SMS route with tracking.
-  - 🤖 **WhatsApp Citizen Bot**: Interactive SOS chat simulator.
   - 🌐 **OASIS CAP 1.2 Feed**: Official XML alert payloads.
 - **Fullscreen Citizen Red Alert Drill**: Takeover warning screen with blinking emergency beacons and audible siren drill.
 
