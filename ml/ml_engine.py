@@ -51,6 +51,16 @@ RAPID_ONSET = {
     "Tornado",
 }
 
+ISLAND_NATIONS = {
+    "Philippines", "Indonesia", "Japan", "Haiti", "Cuba", "Madagascar", "Sri Lanka",
+    "New Zealand", "Fiji", "Vanuatu", "Bahamas", "Jamaica", "Taiwan", "Papua New Guinea", "Dominican Republic"
+}
+
+LANDLOCKED_NATIONS = {
+    "Nepal", "Bhutan", "Switzerland", "Bolivia", "Chad", "Ethiopia", "Niger", "Mali",
+    "Burkina Faso", "Zambia", "Zimbabwe", "Uganda", "Afghanistan", "Mongolia", "Laos", "Paraguay"
+}
+
 
 def _load():
     global _baseline_model, _xgboost_model, _lightgbm_model, _catboost_model, _ensemble_model, _encoders, _load_error
@@ -96,6 +106,8 @@ def _prepare_features(
     disaster_subgroup: str = "Unknown",
     cpi: float = 56.0,
     location_text: str = "",
+    aid_contribution: float = 0.0,
+    is_historic: int = 0,
 ) -> pd.DataFrame:
     scale_stats = _encoders.get("scale_stats", {}) if _encoders else {}
     stats = scale_stats.get(magnitude_scale, {"mean": 0.0, "std": 1.0})
@@ -163,6 +175,19 @@ def _prepare_features(
     cpi_log = float(np.log1p(cpi_val))
     magnitude_cpi_interaction = float(magnitude_zscore * cpi_log)
     duration_response_interaction = float(duration_log * emergency_response_score)
+    rapid_magnitude_interaction = float(is_rapid_onset * magnitude_zscore)
+    response_fatal_risk = float(emergency_response_score * (is_rapid_onset + 1))
+
+    is_island_nation = 1 if country in ISLAND_NATIONS else 0
+    is_landlocked = 1 if country in LANDLOCKED_NATIONS else 0
+    aid_val = float(aid_contribution or 0.0)
+    has_aid_contribution = 1 if aid_val > 0 else 0
+    aid_contribution_log = float(np.log1p(max(0.0, aid_val)))
+    is_historic_val = 1 if is_historic else 0
+
+    is_post_2000 = 1 if year >= 2000 else 0
+    is_monsoon_season = 1 if ("asia" in str(subregion).lower() and month in (6, 7, 8, 9)) else 0
+    event_name_length = len(str(event_name)) if event_name else 0
 
     # Default frequency priors
     country_freq = float(np.log1p(100.0))
@@ -198,6 +223,11 @@ def _prepare_features(
         "is_coastal_keyword": is_coastal_keyword,
         "is_mountain_keyword": is_mountain_keyword,
         "is_urban_keyword": is_urban_keyword,
+        "is_island_nation": is_island_nation,
+        "is_landlocked": is_landlocked,
+        "has_aid_contribution": has_aid_contribution,
+        "aid_contribution_log": aid_contribution_log,
+        "is_historic": is_historic_val,
         "country_freq": country_freq,
         "disaster_subtype_freq": subtype_freq,
         "country_disaster_freq": country_disaster_freq,
@@ -211,10 +241,12 @@ def _prepare_features(
         "elapsed_years": elapsed_years,
         "start_decade": start_decade,
         "start_quarter": start_quarter,
+        "is_post_2000": is_post_2000,
         "month_sin": month_sin,
         "month_cos": month_cos,
         "day_sin": day_sin,
         "day_cos": day_cos,
+        "is_monsoon_season": is_monsoon_season,
         "cpi": cpi_val,
         "cpi_log": cpi_log,
         "cpi_missing": 0,
@@ -225,8 +257,11 @@ def _prepare_features(
         "is_northern_hemisphere": is_northern_hemisphere,
         "is_tropical": is_tropical,
         "has_event_name": has_event_name,
+        "event_name_length": event_name_length,
         "magnitude_cpi_interaction": magnitude_cpi_interaction,
         "duration_response_interaction": duration_response_interaction,
+        "rapid_magnitude_interaction": rapid_magnitude_interaction,
+        "response_fatal_risk": response_fatal_risk,
     }
     return pd.DataFrame([row])
 
@@ -255,6 +290,8 @@ def predict_risk_ml(
     disaster_subgroup: str = "Unknown",
     cpi: float = 56.0,
     location_text: str = "",
+    aid_contribution: float = 0.0,
+    is_historic: int = 0,
 ) -> dict:
     """Predict disaster impact severity using the multi-model super-ensemble."""
     if not ml_model_available():
@@ -286,6 +323,8 @@ def predict_risk_ml(
         disaster_subgroup=disaster_subgroup,
         cpi=cpi,
         location_text=location_text,
+        aid_contribution=aid_contribution,
+        is_historic=is_historic,
     )
 
     def format_prediction(model):
@@ -317,5 +356,5 @@ def predict_risk_ml(
         "catboost_standalone": {**catboost, "model": "Tuned CatBoostClassifier"} if catboost else None,
         "lightgbm_standalone": {**lightgbm, "model": "Tuned LGBMClassifier"} if lightgbm else None,
         "baseline": {**baseline, "model": "RandomForestClassifier"} if baseline else None,
-        "note": "Trained on real EM-DAT records with 57 physical, emergency response, and dual-task continuous severity features.",
+        "note": "Trained on real EM-DAT records with 67 physical, emergency response, financial aid, and dual-task continuous severity features.",
     }

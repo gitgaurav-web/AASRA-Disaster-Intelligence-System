@@ -95,6 +95,11 @@ NUMERIC_FEATURES = [
     "is_coastal_keyword",
     "is_mountain_keyword",
     "is_urban_keyword",
+    "is_island_nation",
+    "is_landlocked",
+    "has_aid_contribution",
+    "aid_contribution_log",
+    "is_historic",
     "country_freq",
     "disaster_subtype_freq",
     "country_disaster_freq",
@@ -108,10 +113,12 @@ NUMERIC_FEATURES = [
     "elapsed_years",
     "start_decade",
     "start_quarter",
+    "is_post_2000",
     "month_sin",
     "month_cos",
     "day_sin",
     "day_cos",
+    "is_monsoon_season",
     "cpi",
     "cpi_log",
     "cpi_missing",
@@ -122,8 +129,11 @@ NUMERIC_FEATURES = [
     "is_northern_hemisphere",
     "is_tropical",
     "has_event_name",
+    "event_name_length",
     "magnitude_cpi_interaction",
     "duration_response_interaction",
+    "rapid_magnitude_interaction",
+    "response_fatal_risk",
 ]
 
 FEATURE_COLUMNS = CATEGORICAL_FEATURES + NUMERIC_FEATURES
@@ -213,7 +223,10 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["declaration"] = data.get("Declaration", pd.Series(dtype=str)).astype(str).fillna("No")
     data["appeal"] = data.get("Appeal", pd.Series(dtype=str)).astype(str).fillna("No")
     data["ofda_response"] = data.get("OFDA/BHA Response", pd.Series(dtype=str)).astype(str).fillna("No")
-    data["has_event_name"] = data.get("Event Name", pd.Series(dtype=str)).notna().astype(int)
+    
+    event_str = data.get("Event Name", pd.Series(dtype=str)).fillna("").astype(str)
+    data["has_event_name"] = (event_str != "").astype(int)
+    data["event_name_length"] = event_str.apply(len)
 
     # 2. High-Order Interactions & Multi-Hazard Metrics
     data["country_disaster"] = data["country"] + "_" + data["disaster_type"]
@@ -223,7 +236,7 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     assoc_str = data["associated_types"].astype(str)
     data["associated_count"] = assoc_str.apply(lambda x: 0 if x in ("None", "nan", "") else len(x.replace(";", ",").split(",")))
 
-    # 3. Location Exposure Keywords
+    # 3. Location Exposure Keywords & Archetypes
     loc_str = data["Location"].fillna("").astype(str).str.lower()
     data["location_word_count"] = loc_str.apply(lambda x: len(x.split()) if x else 0)
     data["location_district_count"] = loc_str.apply(lambda x: len(x.split(",")) if x else 0)
@@ -232,6 +245,16 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["is_coastal_keyword"] = loc_str.str.contains(r"coast|island|bay|sea|delta|beach|port", regex=True).astype(int)
     data["is_mountain_keyword"] = loc_str.str.contains(r"mountain|slope|hill|valley|pass|peak", regex=True).astype(int)
     data["is_urban_keyword"] = loc_str.str.contains(r"capital|city|metro|province|district", regex=True).astype(int)
+
+    ISLAND_NATIONS = {"Philippines", "Indonesia", "Japan", "Haiti", "Cuba", "Madagascar", "Sri Lanka", "New Zealand", "Fiji", "Vanuatu", "Bahamas", "Jamaica", "Taiwan", "Papua New Guinea", "Dominican Republic"}
+    LANDLOCKED_NATIONS = {"Nepal", "Bhutan", "Switzerland", "Bolivia", "Chad", "Ethiopia", "Niger", "Mali", "Burkina Faso", "Zambia", "Zimbabwe", "Uganda", "Afghanistan", "Mongolia", "Laos", "Paraguay"}
+    data["is_island_nation"] = data["country"].isin(ISLAND_NATIONS).astype(int)
+    data["is_landlocked"] = data["country"].isin(LANDLOCKED_NATIONS).astype(int)
+
+    aid_num = pd.to_numeric(data.get("AID Contribution ('000 US$)", pd.Series(dtype=float)), errors="coerce").fillna(0.0)
+    data["has_aid_contribution"] = (aid_num > 0).astype(int)
+    data["aid_contribution_log"] = np.log1p(np.maximum(0, aid_num))
+    data["is_historic"] = (data.get("Historic", pd.Series(dtype=str)).fillna("No").astype(str) == "Yes").astype(int)
 
     # 4. Frequency Pacing
     for col in ["country", "disaster_subtype", "country_disaster"]:
@@ -265,11 +288,11 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
 
     # 6. Temporal Dynamics & Seasonality
     sy = pd.to_numeric(data["Start Year"], errors="coerce").fillna(2000).astype(int)
-    sm = pd.to_numeric(data["Start Month"], errors="coerce").fillna(6).astype(int)
-    sd = pd.to_numeric(data["Start Day"], errors="coerce").fillna(15).astype(int)
+    sm = pd.to_numeric(data["Start Month"], errors="coerce").fillna(6).clip(1, 12).astype(int)
+    sd = pd.to_numeric(data["Start Day"], errors="coerce").fillna(15).clip(1, 31).astype(int)
     ey = pd.to_numeric(data.get("End Year", sy), errors="coerce").fillna(sy).astype(int)
-    em = pd.to_numeric(data.get("End Month", sm), errors="coerce").fillna(sm).astype(int)
-    ed = pd.to_numeric(data.get("End Day", sd), errors="coerce").fillna(sd).astype(int)
+    em = pd.to_numeric(data.get("End Month", sm), errors="coerce").fillna(sm).clip(1, 12).astype(int)
+    ed = pd.to_numeric(data.get("End Day", sd), errors="coerce").fillna(sd).clip(1, 31).astype(int)
 
     duration = (ey - sy) * 365 + (em - sm) * 30 + (ed - sd)
     duration = np.clip(duration.fillna(1), 0, 365)
@@ -280,6 +303,7 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["elapsed_years"] = 2026 - sy
     data["start_decade"] = (sy // 10) * 10
     data["start_quarter"] = (sm - 1) // 3 + 1
+    data["is_post_2000"] = (sy >= 2000).astype(int)
     data["month_sin"] = np.sin(2 * np.pi * sm / 12)
     data["month_cos"] = np.cos(2 * np.pi * sm / 12)
     data["day_sin"] = np.sin(2 * np.pi * sd / 31)
@@ -295,6 +319,7 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
         return "Autumn"
 
     data["season"] = sm.apply(get_season)
+    data["is_monsoon_season"] = ((data["subregion"].str.contains(r"Asia", case=False)) & (sm.isin([6, 7, 8, 9]))).astype(int)
 
     # 7. Spatial Climatology & Macroeconomics
     cpi = pd.to_numeric(data.get("CPI", pd.Series(dtype=float)), errors="coerce")
@@ -315,6 +340,8 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     # 8. Exposure Interactions
     data["magnitude_cpi_interaction"] = data["magnitude_zscore"] * np.log1p(data["cpi"])
     data["duration_response_interaction"] = data["duration_log"] * data["emergency_response_score"]
+    data["rapid_magnitude_interaction"] = data["is_rapid_onset"] * data["magnitude_zscore"]
+    data["response_fatal_risk"] = data["emergency_response_score"] * (data["is_rapid_onset"] + 1)
 
     data["risk_level"] = labels
     data["continuous_severity"] = cont_score
@@ -410,13 +437,12 @@ def main():
     X_test_trans = preprocessor.transform(X_test)
 
     # 1. Upgraded Random Forest Baseline
-    print("\n1/7 Training Upgraded Random Forest baseline...")
+    print("\n1/7 Training Upgraded Random Forest baseline (250 trees, depth 16)...")
     rf_clf = RandomForestClassifier(
-        n_estimators=150,
-        max_depth=14,
-        min_samples_leaf=3,
+        n_estimators=250,
+        max_depth=16,
+        min_samples_leaf=2,
         random_state=42,
-        class_weight="balanced",
         n_jobs=-1,
     )
     rf_clf.fit(X_train_trans, y_train_cat)
@@ -424,16 +450,16 @@ def main():
     rf_proba = rf_clf.predict_proba(X_test_trans)
 
     # 2. Advanced Tuned XGBoost
-    print("2/7 Training Advanced Tuned XGBoost...")
+    print("2/7 Training Advanced Tuned XGBoost (1200 trees, depth 5)...")
     xgb_clf = XGBClassifier(
         n_estimators=1200,
-        max_depth=7,
+        max_depth=5,
         learning_rate=0.015,
-        subsample=0.8,
+        subsample=0.75,
         colsample_bytree=0.7,
-        min_child_weight=4,
-        gamma=0.2,
-        reg_alpha=0.3,
+        min_child_weight=3,
+        gamma=0.18,
+        reg_alpha=1.0,
         reg_lambda=2.5,
         objective="multi:softprob",
         num_class=len(target_encoder.classes_),
@@ -446,12 +472,12 @@ def main():
     xgb_proba = xgb_clf.predict_proba(X_test_trans)
 
     # 3. Advanced Tuned CatBoost
-    print("3/7 Training Advanced CatBoost...")
+    print("3/7 Training Advanced Tuned CatBoost (1200 iterations, depth 7)...")
     cb_clf = CatBoostClassifier(
         iterations=1200,
-        depth=6,
-        learning_rate=0.025,
-        l2_leaf_reg=4.0,
+        depth=7,
+        learning_rate=0.03,
+        l2_leaf_reg=6.0,
         random_seed=42,
         thread_count=-1,
         verbose=0,
@@ -460,18 +486,18 @@ def main():
     cb_preds = cb_clf.predict(X_test_trans).ravel()
     cb_proba = cb_clf.predict_proba(X_test_trans)
 
-    # 4. Advanced LightGBM
-    print("4/7 Training Advanced LightGBM...")
+    # 4. Advanced Tuned LightGBM
+    print("4/7 Training Advanced Tuned LightGBM (1200 trees, 54 leaves)...")
     lgb_clf = LGBMClassifier(
         n_estimators=1200,
         max_depth=7,
-        num_leaves=63,
+        num_leaves=54,
         learning_rate=0.015,
-        subsample=0.8,
+        subsample=0.75,
         colsample_bytree=0.7,
-        min_child_samples=20,
-        reg_alpha=0.3,
-        reg_lambda=2.5,
+        min_child_samples=35,
+        reg_alpha=1.0,
+        reg_lambda=2.0,
         random_state=42,
         n_jobs=-1,
         verbose=-1,
@@ -481,11 +507,11 @@ def main():
     lgb_proba = lgb_clf.predict_proba(X_test_trans)
 
     # 5. ExtraTrees Classifier
-    print("5/7 Training ExtraTrees Classifier...")
+    print("5/7 Training ExtraTrees Classifier (300 trees, depth 18)...")
     et_clf = ExtraTreesClassifier(
         n_estimators=300,
-        max_depth=16,
-        min_samples_split=4,
+        max_depth=18,
+        min_samples_split=3,
         min_samples_leaf=2,
         random_state=42,
         n_jobs=-1,
@@ -497,23 +523,23 @@ def main():
     # 6. Dual-Task Continuous Severity Regressors
     print("6/7 Training Dual-Task Continuous Severity Regressors (XGB + CB + LGB)...")
     xgb_reg = XGBRegressor(
-        n_estimators=1000,
-        max_depth=6,
-        learning_rate=0.015,
+        n_estimators=700,
+        max_depth=5,
+        learning_rate=0.02,
         subsample=0.8,
         colsample_bytree=0.7,
-        reg_alpha=0.5,
-        reg_lambda=3.0,
+        reg_alpha=1.0,
+        reg_lambda=2.5,
         random_state=42,
         n_jobs=-1,
     )
     xgb_reg.fit(X_train_trans, y_train_cont)
 
     cb_reg = CatBoostRegressor(
-        iterations=1000,
-        depth=6,
-        learning_rate=0.02,
-        l2_leaf_reg=4.0,
+        iterations=800,
+        depth=7,
+        learning_rate=0.03,
+        l2_leaf_reg=5.0,
         random_seed=42,
         thread_count=-1,
         verbose=0,
@@ -521,12 +547,14 @@ def main():
     cb_reg.fit(X_train_trans, y_train_cont)
 
     lgb_reg = LGBMRegressor(
-        n_estimators=1000,
+        n_estimators=700,
         max_depth=6,
         num_leaves=45,
-        learning_rate=0.015,
+        learning_rate=0.02,
         subsample=0.8,
         colsample_bytree=0.7,
+        reg_alpha=1.0,
+        reg_lambda=2.0,
         random_state=42,
         n_jobs=-1,
         verbose=-1,
@@ -534,8 +562,8 @@ def main():
     lgb_reg.fit(X_train_trans, y_train_cont)
 
     # 7. Grand Super-Ensemble
-    print("7/7 Constructing Grand Super-Ensemble with Nelder-Mead Soft-Voting Calibration...")
-    weights = [0.242, 0.260, 0.149, 0.149, 0.049, 0.150]
+    print("7/7 Constructing Grand Super-Ensemble with 67-Feature Optimized Calibration...")
+    weights = [0.192, 0.217, 0.168, 0.132, 0.168, 0.123]
     ensemble_estimator = DualTaskSuperEnsemble(
         xgb=xgb_clf,
         cb=cb_clf,

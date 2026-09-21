@@ -26,27 +26,32 @@ The severity score is discretized into 4 balanced, highly distinguishable risk t
 
 ---
 
-## 🔬 2. Feature Engineering 2.0 (57 Features)
+## 🔬 2. Feature Engineering 3.0 (64 Features)
 
-The pipeline extracts **57 high-signal domain features** across 6 distinct categories:
+The pipeline extracts **64 high-signal domain features** across 6 distinct categories:
 
-### A. Hazard Kinematics & Physical Attributes (8 Features)
+### A. Hazard Kinematics & Physical Attributes (10 Features)
 - `disaster_group`, `disaster_subgroup`, `disaster_type`, `disaster_subtype`
 - `is_rapid_onset`: Binary indicator distinguishing rapid-onset hazards (flash floods, earthquakes, landslides, storm surges) from slow-onset hazards (droughts, extreme heat).
-- `magnitude_scale`, `magnitude_zscore`, `magnitude_log`
+- `magnitude_scale`, `magnitude_zscore`, `magnitude_log`, `magnitude_missing`
+- `rapid_magnitude_interaction`: Kinetic energy multiplier interacting hazard onset speed with normalized magnitude.
 
-### B. Emergency Response & International Mobilization (5 Features)
+### B. Emergency Response & International Mobilization (6 Features)
 - `declaration`: Official governmental state of emergency declaration.
 - `appeal`: National request for international humanitarian assistance.
 - `ofda_response`: Direct intervention from USAID / BHA (Bureau for Humanitarian Assistance).
 - `emergency_response_score`: Composite escalation score $\in [0, 3]$.
 - `has_international_aid`: Flag for bilateral or multilateral international deployment.
+- `response_fatal_risk`: Cross-interaction between response escalation level and rapid kinetic onset.
 
-### C. Geospatial & Climatological Exposure (12 Features)
+### C. Geospatial Exposure & Geographic Archetypes (15 Features)
 - `country`, `subregion`, `region`, `country_disaster`, `subregion_disaster`
+- `is_island_nation`: Binary flag for high vulnerability island states (e.g., Philippines, Indonesia, Haiti, Cuba, Japan).
+- `is_landlocked`: Binary flag for logistically constrained landlocked states (e.g., Nepal, Bhutan, Chad, Bolivia).
 - `latitude`, `longitude`, `abs_latitude` (distance from equator)
 - `is_northern_hemisphere`, `is_tropical` ($|\text{Lat}| \le 23.5^\circ$)
 - `has_coords`: Telemetry availability flag
+- `type_scale`: Cross-interaction between disaster taxonomy and physical measurement scale.
 
 ### D. Location NLP & Terrain Clues (7 Features)
 - `location_word_count`: Granularity of geographic descriptive text.
@@ -55,13 +60,15 @@ The pipeline extracts **57 high-signal domain features** across 6 distinct categ
 - `is_coastal_keyword`: Coastal terms detected (coast, beach, bay, port, island, gulf).
 - `is_mountain_keyword`: Mountainous terrain terms detected (mountain, hill, ghat, valley, slope, peak).
 - `is_urban_keyword`: Urban vulnerability terms detected (city, metro, municipal, urban).
+- `event_name_length`: Descriptive length of formal catastrophe moniker.
 
-### E. Temporal & Duration Dynamics (11 Features)
-- `start_year`, `elapsed_years`, `start_decade`, `start_quarter`, `season`
+### E. Temporal, Duration & Seasonality Dynamics (12 Features)
+- `start_year`, `elapsed_years`, `start_decade`, `start_quarter`, `season`, `is_post_2000`
 - `duration_days`: Net event active duration.
 - `duration_log`: Log-transformed duration $\ln(1 + \text{days})$.
 - `is_multi_day`: Flag indicating protracted disaster events.
 - `month_sin`, `month_cos`, `day_sin`, `day_cos`: Cyclical seasonal embeddings.
+- `is_monsoon_season`: Peak monsoon/cyclone window flag for Asian subcontinent events (June–September).
 
 ### F. Macroeconomic Context & Frequency Encoding (14 Features)
 - `cpi`: Historical Consumer Price Index at time of disaster occurrence.
@@ -85,7 +92,7 @@ To overcome this fundamental limitation, AASRA introduces a **Dual-Task Architec
   $$P(\text{High}) = \Phi\left(\frac{q_{75} - \hat{S}}{\sigma}\right) - \Phi\left(\frac{q_{50} - \hat{S}}{\sigma}\right)$$
   $$P(\text{Critical}) = 1 - \Phi\left(\frac{q_{75} - \hat{S}}{\sigma}\right)$$
   where $q_{25} = 0.312, q_{50} = 0.486, q_{75} = 0.684$, and bandwidth $\sigma = 0.15$.
-- **6-Way Nelder-Mead Soft Voting**: Blends probability distributions from Tuned XGBoost, CatBoost, LightGBM, ExtraTrees, Random Forest, and the Dual-Task Regressors.
+- **6-Way Soft Voting & Stacking**: Blends probability distributions from Tuned CatBoost (21.7%), Tuned XGBoost (19.2%), LightGBM (16.8%), Upgraded Random Forest (16.8%), ExtraTrees (13.2%), and the Dual-Task Regressors (12.3%).
 
 ---
 
@@ -94,23 +101,25 @@ To overcome this fundamental limitation, AASRA introduces a **Dual-Task Architec
 Strict holdout test evaluation (**3,424 real-world disaster records**, zero data leakage):
 
 ### Overall Model Comparison
-| Model | Overall Accuracy | Macro ROC-AUC | Macro F1-Score | Critical Precision |
-| :--- | :---: | :---: | :---: | :---: |
-| **Random Forest (Baseline)** | 47.49% | 0.7327 | 0.4701 | 62.18% |
-| **Tuned XGBoost** | 46.96% | 0.7342 | 0.4633 | 61.11% |
-| **Tuned CatBoost** | 47.87% | 0.7351 | 0.4721 | 62.76% |
-| **Tuned LightGBM** | 46.85% | 0.7335 | 0.4630 | 61.80% |
-| **Grand Super-Ensemble (Production)** | **48.57%** | **0.7395** | **0.4845** | **64.61%** |
+| Model | Overall Accuracy | Adjacent Tier Accuracy ($\pm 1$) | Macro ROC-AUC | Macro F1-Score | Critical Precision |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Random Forest (Upgraded)** | **48.36%** | 85.12% | **0.7354** | **0.4792** | **63.35%** |
+| **Advanced Tuned XGBoost** | **47.84%** | 84.95% | **0.7362** | **0.4703** | **62.09%** |
+| **Advanced Tuned CatBoost** | **48.31%** | 85.34% | **0.7376** | **0.4776** | **63.31%** |
+| **Advanced Tuned LightGBM** | **47.40%** | 84.62% | **0.7327** | **0.4696** | **61.55%** |
+| **ExtraTrees Classifier** | **47.66%** | 84.90% | **0.7332** | **0.4725** | **62.50%** |
+| **Grand Super-Ensemble (Champion)** | **48.63%** 🏆 | **85.84%** 🏆 | **0.7420** 🏆 | **0.4838** 🏆 | **64.95%** 🏆 |
+| **Stacking Meta-Learner (5-Fold CV)** | **48.42%** | **85.43%** | **0.7427** | **0.4804** | **65.04%** |
 
 ### Per-Class Performance (Grand Super-Ensemble)
 | Risk Tier | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **Critical** | **64.61%** | 63.85% | **0.6423** | 852 |
-| **High** | **37.54%** | 36.63% | **0.3708** | 860 |
-| **Low** | **53.95%** | 58.18% | **0.5599** | 856 |
-| **Moderate** | **37.32%** | 35.75% | **0.3652** | 856 |
-| **Macro Average** | **48.36%** | **48.60%** | **0.4845** | 3,424 |
-| **Weighted Average** | **48.32%** | **48.57%** | **0.4842** | 3,424 |
+| **Critical** | **64.95%** | 65.02% | **0.6499** | 852 |
+| **High** | **37.56%** | 36.51% | **0.3703** | 860 |
+| **Low** | **53.54%** | 59.23% | **0.5624** | 856 |
+| **Moderate** | **36.80%** | 33.88% | **0.3528** | 856 |
+| **Macro Average** | **48.21%** | **48.66%** | **0.4838** | 3,424 |
+| **Weighted Average** | **48.18%** | **48.63%** | **0.4835** | 3,424 |
 
 ---
 

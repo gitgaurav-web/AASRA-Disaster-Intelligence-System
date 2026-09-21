@@ -63,15 +63,16 @@
 The ML engine predicts real-time disaster severity risk (`Critical`, `High`, `Moderate`, `Low`) based on real-world global disaster historical records from the **EM-DAT** database (17,116 validated events).
 
 ### Performance Benchmarks (Strict Holdout Test Set: 3,424 Samples)
-| Metric | Baseline Random Forest | Tuned CatBoost | Tuned XGBoost | Grand Super-Ensemble |
-| :--- | :---: | :---: | :---: | :---: |
-| **Overall Accuracy** | 47.49% | 47.87% | 46.96% | **48.57%** |
-| **Macro ROC-AUC** | 0.7327 | 0.7351 | 0.7342 | **0.7395 (~74.0%)** |
-| **Macro F1-Score** | 0.4701 | 0.4721 | 0.4633 | **0.4845** |
-| **Critical Precision** | 62.18% | 62.76% | 61.11% | **64.61%** |
-| **Critical F1-Score** | 0.6254 | 0.6438 | 0.6339 | **0.6423** |
+| Metric | Upgraded Random Forest | Tuned CatBoost | Tuned XGBoost | Tuned LightGBM | ExtraTrees | Grand Super-Ensemble |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Exact 4-Tier Accuracy** | **48.36%** | **48.31%** | **47.84%** | **47.40%** | **47.66%** | **48.63%** 🏆 |
+| **Adjacent Tier Accuracy ($\pm 1$)** | 85.12% | 85.34% | 84.95% | 84.62% | 84.90% | **85.84%** 🏆 |
+| **Macro ROC-AUC** | **0.7354** | **0.7376** | **0.7362** | **0.7327** | **0.7332** | **0.7420** 🏆 |
+| **Macro F1-Score** | **0.4792** | **0.4776** | **0.4703** | **0.4696** | **0.4725** | **0.4838** 🏆 |
+| **Critical Precision** | **63.35%** | **63.31%** | **62.09%** | **61.55%** | **62.50%** | **64.95%** 🏆 |
+| **Critical F1-Score** | **0.6383** | **0.6444** | **0.6413** | **0.6296** | **0.6294** | **0.6499** 🏆 |
 
-- **Feature Engineering 2.0**: Extracts **57 domain features** across hazard kinematics (`is_rapid_onset`), official emergency response declarations (`Declaration`, `Appeal`, `OFDA`), location terrain clues (coastal, mountain, urban), and cyclical seasonal dynamics.
+- **Feature Engineering 4.0**: Extracts **67 high-signal domain features** across hazard kinematics (`is_rapid_onset`, `rapid_magnitude_interaction`), official emergency response declarations (`Declaration`, `Appeal`, `OFDA/BHA`), international humanitarian financial aid contributions (`has_aid_contribution`, `aid_contribution_log`), historic disaster tags (`is_historic`), geographic vulnerability archetypes (`is_island_nation`, `is_landlocked`), and cyclical seasonal/monsoon dynamics (`is_monsoon_season`).
 - **Dual-Task Ordinal Modeling**: Incorporates continuous percentile severity regressors calibrated via Gaussian Cumulative Distribution Functions (CDF) to penalize severe rank inversions.
 - **Read More**: Detailed feature breakdowns, mathematical formulas, and reproduction steps are documented in [`ml/README.md`](ml/README.md).
 

@@ -90,7 +90,7 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
             + w[4] * p_rf
             + w[5] * p_reg
         )
-        return blend
+        return blend / blend.sum(axis=1, keepdims=True)
 
     def predict(self, X):
         proba = self.predict_proba(X)
