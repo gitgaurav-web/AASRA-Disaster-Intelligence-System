@@ -99,13 +99,20 @@ def send_fast2sms(
         
         # Fast2SMS returns {"return": true, "request_id": "...", "message": [...]}
         is_success = data.get("return") is True
+        msg_val = data.get("message")
+        if isinstance(msg_val, list):
+            msg_str = " ".join(str(m) for m in msg_val)
+        else:
+            msg_str = str(msg_val or "")
+
         return {
             "success": is_success,
             "provider": "Fast2SMS",
-            "mode": "LIVE_CARRIER",
+            "mode": "LIVE_CARRIER" if is_success else "FAST2SMS_NOTICE",
             "request_id": data.get("request_id", f"REQ-{int(time.time())}"),
             "status_code": response.status_code,
-            "fast2sms_message": data.get("message", []),
+            "fast2sms_message": msg_str,
+            "error": None if is_success else msg_str,
             "numbers_sent": phone_numbers if is_success else [],
             "recipient_count": len(phone_numbers) if is_success else 0,
             "timestamp": int(time.time() * 1000)
@@ -116,6 +123,7 @@ def send_fast2sms(
             "success": False,
             "provider": "Fast2SMS",
             "error": str(e),
+            "fast2sms_message": str(e),
             "mode": "LIVE_CARRIER_ERROR"
         }
 
@@ -179,13 +187,14 @@ def dispatch_emergency_sms(
 
     if effective_key and len(effective_key.strip()) > 10:
         result = send_fast2sms(valid_numbers, final_message, effective_key.strip())
-        # If live failed due to authorization or invalid key, return error with details
+        # If live failed due to authorization, balance or policy, return detailed info
         if not result.get("success"):
+            err_msg = result.get("fast2sms_message") or result.get("error") or "Fast2SMS returned an error."
             return {
                 **result,
                 "message": final_message,
                 "numbers": valid_numbers,
-                "note": "Fast2SMS returned an error. Check your API key or account balance."
+                "note": err_msg
             }
         return {
             **result,
