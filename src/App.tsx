@@ -60,6 +60,8 @@ function App() {
             <Route path="/disasters" element={<DisasterInformation />} />
             <Route path="/disaster-info" element={<DisasterInformation />} />
             <Route path="/emergency-alerts" element={<EmergencyAlerts />} />
+            <Route path="/alerts" element={<EmergencyAlerts />} />
+            <Route path="/live-alerts" element={<EmergencyAlerts />} />
 
             {/* ==========================================
                 2. GOVERNMENT COMMAND PORTAL (/gov prefix)
@@ -68,7 +70,7 @@ function App() {
             <Route path="/gov" element={<GovAuthGuard><Home /></GovAuthGuard>} />
             <Route path="/gov/about" element={<GovAuthGuard><About /></GovAuthGuard>} />
             <Route path="/gov/disasters" element={<GovAuthGuard><DisasterInformation /></GovAuthGuard>} />
-            <Route path="/gov/emergency-alerts" element={<GovAuthGuard><EmergencyAlerts /></GovAuthGuard>} />
+            <Route path="/gov/emergency-alerts" element={<EmergencyAlerts />} />
             <Route path="/gov/risk-map" element={<GovAuthGuard><RiskMap /></GovAuthGuard>} />
             <Route path="/gov/habitations" element={<GovAuthGuard><Habitations /></GovAuthGuard>} />
             <Route path="/gov/habitations/:id" element={<GovAuthGuard><HabitationDetails /></GovAuthGuard>} />

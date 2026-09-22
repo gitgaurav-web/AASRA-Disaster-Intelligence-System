@@ -284,6 +284,45 @@ export default function EmergencyAlerts() {
     }
   };
 
+  // Safe fallback clipboard copy for mobile and HTTP contexts
+  const fallbackCopy = (text) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    } catch (err) {
+      console.warn('Clipboard copy failed:', err);
+    }
+  };
+
+  const safeCopyText = (text) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  // Current Alert Payload for CAP v1.2 Standard Generator & Omnichannel Broadcast
+  const currentAlertPayload = useMemo(() => {
+    return (
+      lastDispatched || {
+        id: 'DEMO-7921',
+        title: `Multi-Hazard Emergency Warning (${district} Basin)`,
+        message: `Doppler precipitation (>65mm) and river flood surge detected in ${district} Sector. Evacuate immediately.`,
+        severity: 'Critical',
+        district: district,
+        dispatched_at: new Date().toISOString(),
+      }
+    );
+  }, [lastDispatched, district]);
+
   const handleSendSMS = async () => {
     setSmsError(null);
     setSmsDeliveryResult(null);
@@ -363,14 +402,14 @@ export default function EmergencyAlerts() {
   const handleCopySMSMessage = () => {
     const defaultMsg = `[GOVT DISASTER ALERT] CRITICAL: ${currentAlertPayload.title} in ${district}. Evacuate immediately to Govt Inter College relief shelter. Helpline: 1077.`;
     const msg = (smsCustomMessage || defaultMsg).trim();
-    navigator.clipboard.writeText(msg);
+    safeCopyText(msg);
     setCopiedSmsText(true);
     setTimeout(() => setCopiedSmsText(false), 2500);
   };
 
   const handleCopyMobileUrl = () => {
     const url = 'http://10.58.222.227:5173/emergency-alerts';
-    navigator.clipboard.writeText(url);
+    safeCopyText(url);
     setCopiedMobileUrl(true);
     setTimeout(() => setCopiedMobileUrl(false), 2500);
   };
@@ -432,26 +471,12 @@ export default function EmergencyAlerts() {
     return targetedHabitations.reduce((acc, h) => acc + (h.population || 2600), 0);
   }, [targetedHabitations]);
 
-  // Current Alert Payload for CAP v1.2 Standard Generator
-  const currentAlertPayload = useMemo(() => {
-    return (
-      lastDispatched || {
-        id: 'DEMO-7921',
-        title: `Multi-Hazard Emergency Warning (${district} Basin)`,
-        message: `Doppler precipitation (>65mm) and river flood surge detected in ${district} Sector. Evacuate immediately.`,
-        severity: 'Critical',
-        district: district,
-        dispatched_at: new Date().toISOString(),
-      }
-    );
-  }, [lastDispatched, district]);
-
   const capXML = useMemo(() => {
     return generateCAPAlertXML(currentAlertPayload);
   }, [currentAlertPayload]);
 
   const handleCopyCAP = () => {
-    navigator.clipboard.writeText(capXML);
+    safeCopyText(capXML);
     setCapCopied(true);
     setTimeout(() => setCapCopied(false), 2000);
   };
