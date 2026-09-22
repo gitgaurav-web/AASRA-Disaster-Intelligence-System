@@ -136,6 +136,8 @@ export default function EmergencyAlerts() {
 
   // WhatsApp State
   const [whatsappPhone, setWhatsappPhone] = useState(() => localStorage.getItem('aasra_whatsapp_phone') || '8544534027');
+  const [copiedSmsText, setCopiedSmsText] = useState(false);
+  const [copiedMobileUrl, setCopiedMobileUrl] = useState(false);
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -357,6 +359,21 @@ export default function EmergencyAlerts() {
     const msg = `[GOVT DISASTER ALERT] CRITICAL: ${currentAlertPayload.title} in ${district}. Evacuate immediately to Govt Inter College. Helpline: 1077.`;
     return `sms:+91${phone}?body=${encodeURIComponent(msg)}`;
   }, [smsPhone, currentAlertPayload, district]);
+
+  const handleCopySMSMessage = () => {
+    const defaultMsg = `[GOVT DISASTER ALERT] CRITICAL: ${currentAlertPayload.title} in ${district}. Evacuate immediately to Govt Inter College relief shelter. Helpline: 1077.`;
+    const msg = (smsCustomMessage || defaultMsg).trim();
+    navigator.clipboard.writeText(msg);
+    setCopiedSmsText(true);
+    setTimeout(() => setCopiedSmsText(false), 2500);
+  };
+
+  const handleCopyMobileUrl = () => {
+    const url = 'http://10.58.222.227:5173/emergency-alerts';
+    navigator.clipboard.writeText(url);
+    setCopiedMobileUrl(true);
+    setTimeout(() => setCopiedMobileUrl(false), 2500);
+  };
 
   const runHazardEvaluation = async (manual = true) => {
     try {
@@ -612,6 +629,117 @@ export default function EmergencyAlerts() {
               >
                 <Send className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{smsSending ? 'Broadcasting DLT SMS...' : `💬 Dispatch Govt DLT PRI SMS`}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 100% Free Instant Alert Delivery Options Grid */}
+          <div className="mt-6 pt-5 border-t border-emerald-800/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                <span>⚡</span> 100% Free Citizen Alert Methods for +91 {smsPhone || '8544534027'} (बिना किसी खर्च के SMS / अलर्ट)
+              </h3>
+              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                ₹0 Cost • Zero Recharge Needed
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              {/* Option 1: WhatsApp Directive */}
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-emerald-500/30 hover:border-emerald-400/60 transition flex flex-col justify-between space-y-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-emerald-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Option 1: WhatsApp Direct
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">
+                      Instant & Free
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Citizen handset par direct official evacuation directive, safe shelter location aur helpline 1077 bhejta hai.
+                  </p>
+                </div>
+                <a
+                  href={liveWhatsAppUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-[11px] rounded-lg text-center transition flex items-center justify-center gap-1.5 shadow"
+                >
+                  <Send className="w-3 h-3" /> Send WhatsApp to +91 {smsPhone || '8544534027'}
+                </a>
+              </div>
+
+              {/* Option 2: Native Phone SMS (Free 100 SMS/Day SIM pack) */}
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-blue-500/30 hover:border-blue-400/60 transition flex flex-col justify-between space-y-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-blue-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-blue-400" /> Option 2: Phone SMS App
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">
+                      Free SIM Pack
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Aapke phone ka native SMS app kholta hai pre-typed alert ke sath. Daily 100 free SMS quota se send hota hai.
+                  </p>
+                </div>
+                <a
+                  href={liveNativeSmsUrl}
+                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] rounded-lg text-center transition flex items-center justify-center gap-1.5 shadow"
+                >
+                  <Smartphone className="w-3 h-3" /> Open in Phone SMS App
+                </a>
+              </div>
+
+              {/* Option 3: Fast2SMS Web Portal using Free ₹50 Balance */}
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-amber-500/30 hover:border-amber-400/60 transition flex flex-col justify-between space-y-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-400" /> Option 3: Fast2SMS ₹50 Free
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+                      Free Balance
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Fast2SMS signup par mila ₹50 balance web portal se bina ₹100 recharge ke use hota hai. Message copy karein aur send karein:
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleCopySMSMessage}
+                    className="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-bold rounded-lg border border-slate-700 transition flex items-center justify-center gap-1"
+                  >
+                    {copiedSmsText ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-amber-400" />}
+                    <span>{copiedSmsText ? 'Copied!' : 'Copy Text'}</span>
+                  </button>
+                  <a
+                    href="https://www.fast2sms.com/dashboard/quick-sms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-1.5 px-2 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold rounded-lg text-center transition flex items-center justify-center gap-1 shadow"
+                  >
+                    <ExternalLink className="w-3 h-3" /> Fast2SMS
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Local WiFi Handset Direct Link Banner */}
+            <div className="mt-3 p-2.5 rounded-xl bg-black/30 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px]">
+              <div className="flex items-center gap-2 text-slate-300">
+                <span className="p-1 rounded bg-emerald-500/20 text-emerald-400 font-bold">📲 Mobile Handset Live Link:</span>
+                <span>Open <strong className="text-white font-mono">http://10.58.222.227:5173/emergency-alerts</strong> on mobile phone {smsPhone || '8544534027'}</span>
+              </div>
+              <button
+                onClick={handleCopyMobileUrl}
+                className="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-200 rounded border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 transition"
+              >
+                {copiedMobileUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedMobileUrl ? 'URL Copied!' : 'Copy Mobile URL'}</span>
               </button>
             </div>
           </div>
@@ -1172,6 +1300,45 @@ export default function EmergencyAlerts() {
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg mt-1">
                         💡 {smsDeliveryResult.guidance}
                       </p>
+                    )}
+
+                    {smsDeliveryResult.fast2sms_notice && (
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-xl space-y-2 mt-2">
+                        <div className="flex items-start gap-2 text-[11px] text-amber-800 dark:text-amber-200">
+                          <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="block">Fast2SMS Policy Notice:</strong>
+                            <span>{smsDeliveryResult.fast2sms_notice}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1 text-[11px]">
+                          <a
+                            href={liveWhatsAppUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>Send 100% Free via WhatsApp</span>
+                          </a>
+                          <a
+                            href={liveNativeSmsUrl}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
+                          >
+                            <Smartphone className="w-3 h-3" />
+                            <span>Open in Phone SMS App</span>
+                          </a>
+                          <a
+                            href="https://www.fast2sms.com/dashboard/quick-sms"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Use Fast2SMS Free ₹50 Balance</span>
+                          </a>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
