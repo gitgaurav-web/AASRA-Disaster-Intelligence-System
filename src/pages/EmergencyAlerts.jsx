@@ -340,6 +340,24 @@ export default function EmergencyAlerts() {
     });
   };
 
+  const liveWhatsAppUrl = useMemo(() => {
+    const phone = (whatsappPhone || smsPhone || '8544534027').trim();
+    return generateWhatsAppEmergencyLink({
+      phoneNumber: phone,
+      title: currentAlertPayload.title,
+      message: currentAlertPayload.message,
+      district: district,
+      shelterName: 'Government Inter College Campus',
+      hazardType: currentAlertPayload.hazard_type || 'Flood',
+    });
+  }, [whatsappPhone, smsPhone, currentAlertPayload, district]);
+
+  const liveNativeSmsUrl = useMemo(() => {
+    const phone = (smsPhone || '8544534027').trim().replace(/\D/g, '').slice(-10);
+    const msg = `[GOVT DISASTER ALERT] CRITICAL: ${currentAlertPayload.title} in ${district}. Evacuate immediately to Govt Inter College. Helpline: 1077.`;
+    return `sms:+91${phone}?body=${encodeURIComponent(msg)}`;
+  }, [smsPhone, currentAlertPayload, district]);
+
   const runHazardEvaluation = async (manual = true) => {
     try {
       if (manual) setEvaluating(true);
@@ -569,13 +587,23 @@ export default function EmergencyAlerts() {
 
             {/* Quick 1-Click Action Hub */}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 min-w-[280px]">
-              <button
-                onClick={handleOpenWhatsAppDirect}
-                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition flex items-center justify-center gap-2 group cursor-pointer"
+              <a
+                href={liveWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition flex items-center justify-center gap-2 group cursor-pointer text-center"
               >
                 <Smartphone className="w-4 h-4 text-slate-950 group-hover:scale-110 transition" />
-                <span>📲 Send Live WhatsApp Alert to {smsPhone || '8544534027'}</span>
-              </button>
+                <span>📲 Open WhatsApp Alert ({smsPhone || '8544534027'})</span>
+              </a>
+
+              <a
+                href={liveNativeSmsUrl}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow cursor-pointer text-center"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-blue-200" />
+                <span>📱 Open in Phone SMS App</span>
+              </a>
 
               <button
                 onClick={handleSendSMS}
@@ -583,7 +611,7 @@ export default function EmergencyAlerts() {
                 className="w-full py-2.5 px-4 bg-slate-800/90 hover:bg-slate-750 text-white font-bold text-xs rounded-xl border border-emerald-500/30 transition flex items-center justify-center gap-2 shadow cursor-pointer disabled:opacity-60"
               >
                 <Send className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{smsSending ? 'Broadcasting DLT SMS...' : `💬 Broadcast Govt DLT SMS (+91 ${smsPhone || '8544534027'})`}</span>
+                <span>{smsSending ? 'Broadcasting DLT SMS...' : `💬 Dispatch Govt DLT PRI SMS`}</span>
               </button>
             </div>
           </div>
