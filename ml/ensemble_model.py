@@ -57,16 +57,21 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
         p_rf = self.rf.predict_proba(X)
 
         # Dual-task continuous severity regression prediction
-        pred_cont = (
-            0.40 * self.xgb_reg.predict(X)
-            + 0.35 * self.cb_reg.predict(X)
-            + 0.25 * self.lgb_reg.predict(X)
-        )
+        if self.cb_reg is not None and self.xgb_reg is not None:
+            pred_cont = 0.60 * self.cb_reg.predict(X) + 0.40 * self.xgb_reg.predict(X)
+        elif self.xgb_reg is not None:
+            pred_cont = self.xgb_reg.predict(X)
+        elif self.cb_reg is not None:
+            pred_cont = self.cb_reg.predict(X)
+        elif self.lgb_reg is not None:
+            pred_cont = self.lgb_reg.predict(X)
+        else:
+            pred_cont = np.full(len(X), 0.5)
 
         q25 = float(self.thresholds.get("0.25", 0.312))
-        q50 = float(self.thresholds.get("0.5", 0.486))
+        q50 = float(self.thresholds.get("0.5", self.thresholds.get("0.50", 0.486)))
         q75 = float(self.thresholds.get("0.75", 0.684))
-        sigma = 0.15
+        sigma = 0.14
 
         crit_idx = list(self.classes_).index("Critical")
         high_idx = list(self.classes_).index("High")

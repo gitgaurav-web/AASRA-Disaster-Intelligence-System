@@ -9,7 +9,7 @@ Trains and benchmarks 5 diverse model architectures + Dual-Task Super-Ensemble:
 6. Dual-Task Continuous Severity Regressors (XGBoost + CatBoost + LightGBM on continuous impact percentile)
 7. Grand Super-Ensemble (Calibrated Soft-Voting Blending across all 5 classifiers + Regressor Ordinal Probabilities)
 
-Features (57 engineered physical, climatological, emergency response, and geographic indicators):
+Features (87 engineered physical, climatological, emergency response, and geographic indicators):
 - Official government emergency action severity (Declaration, Appeal, OFDA/BHA Response).
 - Rapid vs slow onset hazard kinematics.
 - Multi-hazard cascades and co-occurrence counts.
@@ -17,8 +17,12 @@ Features (57 engineered physical, climatological, emergency response, and geogra
 - Scale-specific magnitude standardization (z-score within unit scale: Richter vs Km2 vs Kph).
 - Non-linear event duration in days (log-transformed) and multi-day flags.
 - Continuous cyclical seasonal encodings (sin/cos of month and day) + season categories.
+- Solar declination & harmonic cyclical oscillations (day_of_year_sin/cos, month_harmonic_sin/cos).
+- External disaster IDs & GLIDE disaster registry indicators.
+- Major hydrological river basin indicators and length metrics.
+- Administrative boundaries & GADM spatial granularity.
 - Historical frequency statistics (country_freq, subtype_freq, country_disaster_freq).
-- Economic baseline indicators (Consumer Price Index - CPI, CPI-magnitude interaction).
+- Economic baseline & velocity indicators (CPI, aid_per_day, cpi_start_year_ratio).
 - Geolocation indicators (latitude, longitude, absolute latitude, tropical zone dummy).
 """
 
@@ -134,6 +138,27 @@ NUMERIC_FEATURES = [
     "duration_response_interaction",
     "rapid_magnitude_interaction",
     "response_fatal_risk",
+    # High-Signal External Registry, Hydrology & Geospatial Boundary Features
+    "has_external_id",
+    "is_glide_id",
+    "external_id_count",
+    "has_river_basin",
+    "river_basin_len",
+    "is_major_basin",
+    "has_gadm",
+    "gadm_count",
+    "location_total_chars",
+    "day_of_year_sin",
+    "day_of_year_cos",
+    "month_harmonic_sin",
+    "month_harmonic_cos",
+    "aid_per_day",
+    "emergency_magnitude_prod",
+    "country_disaster_freq_ratio",
+    "disaster_type_freq_ratio",
+    "cpi_start_year_ratio",
+    "origin_specified",
+    "origin_len",
 ]
 
 FEATURE_COLUMNS = CATEGORICAL_FEATURES + NUMERIC_FEATURES
@@ -294,11 +319,12 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     em = pd.to_numeric(data.get("End Month", sm), errors="coerce").fillna(sm).clip(1, 12).astype(int)
     ed = pd.to_numeric(data.get("End Day", sd), errors="coerce").fillna(sd).clip(1, 31).astype(int)
 
-    duration = (ey - sy) * 365 + (em - sm) * 30 + (ed - sd)
-    duration = np.clip(duration.fillna(1), 0, 365)
-    data["duration_log"] = np.log1p(duration)
-    data["duration_days"] = duration
-    data["is_multi_day"] = (duration > 1).astype(int)
+    start_dates = pd.to_datetime(dict(year=sy, month=sm, day=sd), errors="coerce")
+    end_dates = pd.to_datetime(dict(year=ey, month=em, day=ed), errors="coerce")
+    dur_days = (end_dates - start_dates).dt.days.clip(lower=0).fillna(0)
+    data["duration_days"] = dur_days
+    data["duration_log"] = np.log1p(dur_days)
+    data["is_multi_day"] = (dur_days > 1).astype(int)
     data["start_year"] = sy
     data["elapsed_years"] = 2026 - sy
     data["start_decade"] = (sy // 10) * 10
@@ -308,6 +334,13 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["month_cos"] = np.cos(2 * np.pi * sm / 12)
     data["day_sin"] = np.sin(2 * np.pi * sd / 31)
     data["day_cos"] = np.cos(2 * np.pi * sd / 31)
+
+    # Solar declination & harmonic oscillations
+    day_of_year = start_dates.dt.dayofyear.fillna(182.0).astype(float)
+    data["day_of_year_sin"] = np.sin(2 * np.pi * day_of_year / 365.25)
+    data["day_of_year_cos"] = np.cos(2 * np.pi * day_of_year / 365.25)
+    data["month_harmonic_sin"] = np.sin(4 * np.pi * sm / 12)
+    data["month_harmonic_cos"] = np.cos(4 * np.pi * sm / 12)
 
     def get_season(m):
         if m in (12, 1, 2):
@@ -342,6 +375,35 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["duration_response_interaction"] = data["duration_log"] * data["emergency_response_score"]
     data["rapid_magnitude_interaction"] = data["is_rapid_onset"] * data["magnitude_zscore"]
     data["response_fatal_risk"] = data["emergency_response_score"] * (data["is_rapid_onset"] + 1)
+
+    # 9. External ID & Global Registry Signatures
+    ext_id_str = data.get("External IDs", pd.Series(dtype=str)).fillna("").astype(str)
+    data["has_external_id"] = (ext_id_str.str.strip() != "").astype(int)
+    data["is_glide_id"] = ext_id_str.str.contains(r"glide|gl-|eq-|fl-|tc-|dr-", case=False).astype(int)
+    data["external_id_count"] = ext_id_str.apply(lambda x: len(x.replace(";", ",").split(",")) if x.strip() else 0)
+
+    # 10. Hydrological River Basins
+    rb_str = data.get("River Basin", pd.Series(dtype=str)).fillna("").astype(str)
+    data["has_river_basin"] = (rb_str.str.strip() != "").astype(int)
+    data["river_basin_len"] = rb_str.apply(len)
+    data["is_major_basin"] = rb_str.str.contains(r"ganges|brahmaputra|yangtze|indus|mekong|danube|amazon|mississippi|nile|rhine", case=False).astype(int)
+
+    # 11. Administrative Granularity & Text Topology
+    gadm_str = data.get("GADM Admin Units", pd.Series(dtype=str)).fillna("").astype(str)
+    data["has_gadm"] = (gadm_str.str.strip() != "").astype(int)
+    data["gadm_count"] = gadm_str.apply(lambda x: len(x.split(",")) if x.strip() else 0)
+    data["location_total_chars"] = loc_str.apply(len)
+
+    # 12. Economic & Emergency Velocity Ratios
+    data["aid_per_day"] = np.log1p(np.maximum(0, aid_num) / (dur_days + 1.0))
+    data["emergency_magnitude_prod"] = data["emergency_response_score"] * (data["magnitude_zscore"] + 3.0)
+    data["country_disaster_freq_ratio"] = data["country_disaster_freq"] / (data["country_freq"] + 1e-4)
+    data["disaster_type_freq_ratio"] = data["disaster_subtype_freq"] / (data["country_disaster_freq"] + 1e-4)
+    data["cpi_start_year_ratio"] = data["cpi"] / (data["start_year"] - 1899)
+
+    # 13. Origin Specificity
+    data["origin_specified"] = (data["origin"] != "Unknown").astype(int)
+    data["origin_len"] = data["origin"].apply(len)
 
     data["risk_level"] = labels
     data["continuous_severity"] = cont_score
@@ -562,8 +624,9 @@ def main():
     lgb_reg.fit(X_train_trans, y_train_cont)
 
     # 7. Grand Super-Ensemble
-    print("7/7 Constructing Grand Super-Ensemble with 67-Feature Optimized Calibration...")
-    weights = [0.192, 0.217, 0.168, 0.132, 0.168, 0.123]
+    print("7/7 Constructing Grand Super-Ensemble with 87-Feature Optimized Calibration...")
+    # Optimal weights mapped to: [xgb, cb, lgb, et, rf, reg]
+    weights = [0.217, 0.235, 0.181, 0.120, 0.125, 0.121]
     ensemble_estimator = DualTaskSuperEnsemble(
         xgb=xgb_clf,
         cb=cb_clf,

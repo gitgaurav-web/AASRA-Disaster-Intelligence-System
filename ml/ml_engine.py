@@ -108,6 +108,9 @@ def _prepare_features(
     location_text: str = "",
     aid_contribution: float = 0.0,
     is_historic: int = 0,
+    external_ids: str = "",
+    river_basin: str = "",
+    gadm_admin_units: str = "",
 ) -> pd.DataFrame:
     scale_stats = _encoders.get("scale_stats", {}) if _encoders else {}
     stats = scale_stats.get(magnitude_scale, {"mean": 0.0, "std": 1.0})
@@ -131,6 +134,17 @@ def _prepare_features(
     month_cos = float(np.cos(2 * math.pi * month / 12))
     day_sin = float(np.sin(2 * math.pi * day / 31))
     day_cos = float(np.cos(2 * math.pi * day / 31))
+
+    try:
+        from datetime import date
+        doy = float(date(year, month, day).timetuple().tm_yday)
+    except Exception:
+        doy = 182.0
+
+    day_of_year_sin = float(np.sin(2 * math.pi * doy / 365.25))
+    day_of_year_cos = float(np.cos(2 * math.pi * doy / 365.25))
+    month_harmonic_sin = float(np.sin(4 * math.pi * month / 12))
+    month_harmonic_cos = float(np.cos(4 * math.pi * month / 12))
 
     if month in (12, 1, 2):
         season = "Winter"
@@ -194,6 +208,32 @@ def _prepare_features(
     subtype_freq = float(np.log1p(50.0))
     country_disaster_freq = float(np.log1p(25.0))
 
+    # Novel 87-feature extensions
+    ext_id_str = str(external_ids or "").strip()
+    has_external_id = 1 if ext_id_str else 0
+    is_glide_id = 1 if any(k in ext_id_str.lower() for k in ("glide", "gl-", "eq-", "fl-", "tc-", "dr-")) else 0
+    external_id_count = len(ext_id_str.replace(";", ",").split(",")) if ext_id_str else 0
+
+    rb_str = str(river_basin or "").strip()
+    has_river_basin = 1 if rb_str else 0
+    river_basin_len = len(rb_str)
+    is_major_basin = 1 if any(k in rb_str.lower() for k in ("ganges", "brahmaputra", "yangtze", "indus", "mekong", "danube", "amazon", "mississippi", "nile", "rhine")) else 0
+
+    gadm_str = str(gadm_admin_units or "").strip()
+    has_gadm = 1 if gadm_str else 0
+    gadm_count = len(gadm_str.split(",")) if gadm_str else 0
+    location_total_chars = len(loc_str)
+
+    aid_per_day = float(np.log1p(max(0.0, aid_val) / (duration_clamped + 1.0)))
+    emergency_magnitude_prod = float(emergency_response_score * (magnitude_zscore + 3.0))
+    country_disaster_freq_ratio = float(country_disaster_freq / (country_freq + 1e-4))
+    disaster_type_freq_ratio = float(subtype_freq / (country_disaster_freq + 1e-4))
+    cpi_start_year_ratio = float(cpi_val / max(1, year - 1899))
+
+    origin_str = str(origin or "Unknown")
+    origin_specified = 1 if origin_str != "Unknown" else 0
+    origin_len = len(origin_str)
+
     row = {
         "disaster_group": str(disaster_group or "Unknown"),
         "disaster_subgroup": str(disaster_subgroup or "Unknown"),
@@ -203,7 +243,7 @@ def _prepare_features(
         "subregion": str(subregion or "Unknown"),
         "region": str(region or "Unknown"),
         "magnitude_scale": str(magnitude_scale or "Unknown"),
-        "origin": str(origin or "Unknown"),
+        "origin": origin_str,
         "associated_types": str(associated_types or "None"),
         "declaration": str(declaration or "No"),
         "appeal": str(appeal or "No"),
@@ -262,6 +302,26 @@ def _prepare_features(
         "duration_response_interaction": duration_response_interaction,
         "rapid_magnitude_interaction": rapid_magnitude_interaction,
         "response_fatal_risk": response_fatal_risk,
+        "has_external_id": has_external_id,
+        "is_glide_id": is_glide_id,
+        "external_id_count": external_id_count,
+        "has_river_basin": has_river_basin,
+        "river_basin_len": river_basin_len,
+        "is_major_basin": is_major_basin,
+        "has_gadm": has_gadm,
+        "gadm_count": gadm_count,
+        "location_total_chars": location_total_chars,
+        "day_of_year_sin": day_of_year_sin,
+        "day_of_year_cos": day_of_year_cos,
+        "month_harmonic_sin": month_harmonic_sin,
+        "month_harmonic_cos": month_harmonic_cos,
+        "aid_per_day": aid_per_day,
+        "emergency_magnitude_prod": emergency_magnitude_prod,
+        "country_disaster_freq_ratio": country_disaster_freq_ratio,
+        "disaster_type_freq_ratio": disaster_type_freq_ratio,
+        "cpi_start_year_ratio": cpi_start_year_ratio,
+        "origin_specified": origin_specified,
+        "origin_len": origin_len,
     }
     return pd.DataFrame([row])
 
@@ -292,6 +352,9 @@ def predict_risk_ml(
     location_text: str = "",
     aid_contribution: float = 0.0,
     is_historic: int = 0,
+    external_ids: str = "",
+    river_basin: str = "",
+    gadm_admin_units: str = "",
 ) -> dict:
     """Predict disaster impact severity using the multi-model super-ensemble."""
     if not ml_model_available():
@@ -325,6 +388,9 @@ def predict_risk_ml(
         location_text=location_text,
         aid_contribution=aid_contribution,
         is_historic=is_historic,
+        external_ids=external_ids,
+        river_basin=river_basin,
+        gadm_admin_units=gadm_admin_units,
     )
 
     def format_prediction(model):
@@ -356,5 +422,5 @@ def predict_risk_ml(
         "catboost_standalone": {**catboost, "model": "Tuned CatBoostClassifier"} if catboost else None,
         "lightgbm_standalone": {**lightgbm, "model": "Tuned LGBMClassifier"} if lightgbm else None,
         "baseline": {**baseline, "model": "RandomForestClassifier"} if baseline else None,
-        "note": "Trained on real EM-DAT records with 67 physical, emergency response, financial aid, and dual-task continuous severity features.",
+        "note": "Trained on real EM-DAT records with 87 physical, emergency response, financial aid, and dual-task continuous severity features.",
     }
