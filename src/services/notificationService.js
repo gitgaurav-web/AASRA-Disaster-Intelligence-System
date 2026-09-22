@@ -369,14 +369,22 @@ export async function saveSMSGatewayConfig(apiKey) {
 export function formatWhatsAppMessage({ title, message, district, shelterName, hazardType }) {
   const icon = hazardType === 'Rain' ? '🌧️' : hazardType === 'Flood' ? '🌊' : hazardType === 'Earthquake' ? '💥' : '⚠️';
   return (
-    `🚨 *AASRA DISASTER EARLY WARNING DIRECTIVE* 🚨\n\n` +
-    `${icon} *Hazard:* ${hazardType || 'Multi-Hazard Event'}\n` +
-    `📍 *Sector / District:* ${district || 'Affected Zone'}\n` +
-    `⚠️ *Directive:* ${title || 'Immediate Evacuation Warning'}\n\n` +
-    `📝 *Action Advisory:* ${message || 'Move immediately to nearest high-ground safe shelter. Avoid riverbanks and vulnerable structures.'}\n\n` +
-    `🏛️ *Designated Shelter:* ${shelterName || 'Government Inter College / Community Relief Center'}\n` +
-    `📞 *Emergency Helpline:* 1077 (Toll-Free) / 112\n\n` +
-    `_Dispatched via National Disaster Decision Support System (NDMA CAP v1.2 Compliant)_`
+    `🚨 *GOVERNMENT OF INDIA — DISASTER EVACUATION DIRECTIVE* 🚨\n` +
+    `*Disaster Emergency Operation Center (DEOC) | NDMA Sachet Interop*\n\n` +
+    `${icon} *HAZARD TYPE:* ${hazardType ? hazardType.toUpperCase() : 'MULTI-HAZARD EVENT'}\n` +
+    `📍 *AFFECTED SECTOR:* ${district || 'Affected Area'} Basin\n` +
+    `⚠️ *DIRECTIVE:* ${title || 'Immediate Evacuation Order'}\n\n` +
+    `📢 *OFFICIAL ADVISORY:*\n${message || 'Immediate evacuation ordered. Avoid river channels, weak bridges, and unstable slopes.'}\n\n` +
+    `🏛️ *DESIGNATED SAFE RELIEF SHELTER:*\n` +
+    `*${shelterName || 'Government Inter College Campus'}*\n` +
+    `• Distance: 1.8 km via Highway Transit Corridor\n` +
+    `• Facilities: Medical Post, Food Relief, Clean Drinking Water\n` +
+    `• Turn-by-Turn GPS Map: https://disaster-dss.gov.in/shelter-route\n\n` +
+    `📞 *24x7 TOLL-FREE EMERGENCY HELPLINES:*\n` +
+    `• State Emergency Control Room: *1077*\n` +
+    `• National Emergency Response: *112*\n` +
+    `• Ambulance Service: *108*\n\n` +
+    `_Issued by State Disaster Management Authority in public safety interest._`
   );
 }
 

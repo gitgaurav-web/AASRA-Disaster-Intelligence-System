@@ -523,6 +523,72 @@ export default function EmergencyAlerts() {
           </div>
         </div>
 
+        {/* National Disaster Management Authority (NDMA) - Citizen Mobile Evacuation Dispatch Console */}
+        <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 text-white rounded-2xl border-2 border-emerald-500/40 p-5 md:p-6 shadow-xl mb-8 relative overflow-hidden">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+            <div className="space-y-2 max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Official Govt Citizen Alert Gateway
+                </span>
+                <span className="px-2.5 py-0.5 text-[10px] font-bold text-slate-300 bg-slate-800/80 rounded-full border border-slate-700">
+                  TRAI DLT Category: Disaster Emergency (VM-NDMAGOV)
+                </span>
+              </div>
+
+              <h2 className="text-base md:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                <span>🇮🇳</span> National Citizen Emergency Mobile Dispatch Center
+              </h2>
+
+              <p className="text-xs text-emerald-100/80 leading-relaxed">
+                Send instantaneous evacuation directives, verified relief shelter locations, and emergency helpline (1077) directly to citizens and ground responders across {district} Sector.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                <span className="text-emerald-200/90 font-semibold">Active Citizen Handset:</span>
+                <div className="flex items-center gap-1.5 bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-600/50 font-mono font-bold text-white">
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+91</span>
+                  <input
+                    type="text"
+                    value={smsPhone}
+                    onChange={(e) => {
+                      setSmsPhone(e.target.value);
+                      setWhatsappPhone(e.target.value);
+                    }}
+                    placeholder="8544534027"
+                    className="bg-transparent border-b border-emerald-500/50 w-28 text-white focus:outline-none focus:border-emerald-300 px-1 font-mono font-bold"
+                  />
+                </div>
+                <span className="text-[11px] text-emerald-300/80 bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-500/30">
+                  Sector: {district} Basin
+                </span>
+              </div>
+            </div>
+
+            {/* Quick 1-Click Action Hub */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 min-w-[280px]">
+              <button
+                onClick={handleOpenWhatsAppDirect}
+                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wide rounded-xl shadow-lg transition flex items-center justify-center gap-2 group cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 text-slate-950 group-hover:scale-110 transition" />
+                <span>📲 Send Live WhatsApp Alert to {smsPhone || '8544534027'}</span>
+              </button>
+
+              <button
+                onClick={handleSendSMS}
+                disabled={smsSending}
+                className="w-full py-2.5 px-4 bg-slate-800/90 hover:bg-slate-750 text-white font-bold text-xs rounded-xl border border-emerald-500/30 transition flex items-center justify-center gap-2 shadow cursor-pointer disabled:opacity-60"
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{smsSending ? 'Broadcasting DLT SMS...' : `💬 Broadcast Govt DLT SMS (+91 ${smsPhone || '8544534027'})`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Left Column: Live Test Broadcast Controls */}
           <div className="lg:col-span-2 space-y-6">
