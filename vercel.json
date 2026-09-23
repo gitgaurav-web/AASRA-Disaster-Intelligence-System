@@ -1,8 +1,12 @@
-﻿{
+{
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://aasra-disaster-intelligence-system.onrender.com/api/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/index.html"
     }
   ]
 }
