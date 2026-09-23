@@ -9,4 +9,8 @@ joblib
 pandas
 scikit-learn==1.8.0
 xgboost==2.1.4
+catboost
+lightgbm
+scipy
 openpyxl==3.1.5
+
