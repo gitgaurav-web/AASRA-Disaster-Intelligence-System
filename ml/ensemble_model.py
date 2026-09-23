@@ -27,6 +27,7 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
         weights,
         thresholds,
         classes,
+        multipliers=None,
     ):
         self.xgb = xgb
         self.cb = cb
@@ -40,6 +41,7 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
         self.thresholds = dict(thresholds)
         self.classes = list(classes)
         self.classes_ = np.array(classes)
+        self.multipliers = list(multipliers) if multipliers is not None else [1.0, 1.0, 1.0, 1.0]
 
     @property
     def classes(self):
@@ -99,4 +101,7 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
         proba = self.predict_proba(X)
+        if hasattr(self, "multipliers") and self.multipliers is not None:
+            mult = np.array(self.multipliers)
+            return (proba * mult).argmax(axis=1)
         return proba.argmax(axis=1)

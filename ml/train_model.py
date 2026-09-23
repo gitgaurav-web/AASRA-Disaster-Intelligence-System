@@ -9,7 +9,7 @@ Trains and benchmarks 5 diverse model architectures + Dual-Task Super-Ensemble:
 6. Dual-Task Continuous Severity Regressors (XGBoost + CatBoost + LightGBM on continuous impact percentile)
 7. Grand Super-Ensemble (Calibrated Soft-Voting Blending across all 5 classifiers + Regressor Ordinal Probabilities)
 
-Features (87 engineered physical, climatological, emergency response, and geographic indicators):
+Features (96 engineered physical, climatological, emergency response, and geographic indicators):
 - Official government emergency action severity (Declaration, Appeal, OFDA/BHA Response).
 - Rapid vs slow onset hazard kinematics.
 - Multi-hazard cascades and co-occurrence counts.
@@ -21,9 +21,12 @@ Features (87 engineered physical, climatological, emergency response, and geogra
 - External disaster IDs & GLIDE disaster registry indicators.
 - Major hydrological river basin indicators and length metrics.
 - Administrative boundaries & GADM spatial granularity.
-- Historical frequency statistics (country_freq, subtype_freq, country_disaster_freq).
+- Historical frequency statistics (country_freq, subtype_freq, country_disaster_freq, classification_key_freq).
 - Economic baseline & velocity indicators (CPI, aid_per_day, cpi_start_year_ratio).
 - Geolocation indicators (latitude, longitude, absolute latitude, tropical zone dummy).
+- Standardization taxonomy: EM-DAT Classification Key & 3-letter Country ISO.
+- Semantic Hazard Origin indicators (heavy rain, tropical cyclone, monsoon, tectonic, drought).
+- Annual Disaster Event Sequence log metric from DisNo.
 """
 
 import json
@@ -72,6 +75,8 @@ CATEGORICAL_FEATURES = [
     "disaster_subgroup",
     "disaster_type",
     "disaster_subtype",
+    "classification_key",
+    "iso",
     "country",
     "subregion",
     "region",
@@ -107,6 +112,7 @@ NUMERIC_FEATURES = [
     "country_freq",
     "disaster_subtype_freq",
     "country_disaster_freq",
+    "classification_key_freq",
     "magnitude_missing",
     "magnitude_zscore",
     "magnitude_log",
@@ -159,6 +165,13 @@ NUMERIC_FEATURES = [
     "cpi_start_year_ratio",
     "origin_specified",
     "origin_len",
+    # Semantic Origin Keywords & Annual Disaster Event Sequence
+    "origin_heavy_rain",
+    "origin_tropical_cyclone",
+    "origin_monsoon",
+    "origin_tectonic",
+    "origin_drought",
+    "year_event_seq_log",
 ]
 
 FEATURE_COLUMNS = CATEGORICAL_FEATURES + NUMERIC_FEATURES
@@ -239,6 +252,8 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["disaster_subgroup"] = data.get("Disaster Subgroup", pd.Series(dtype=str)).astype(str).fillna("Unknown")
     data["disaster_type"] = dtype_str
     data["disaster_subtype"] = dsubtype_str
+    data["classification_key"] = data.get("Classification Key", pd.Series(dtype=str)).astype(str).fillna("Unknown")
+    data["iso"] = data.get("ISO", pd.Series(dtype=str)).astype(str).fillna("Unknown")
     data["country"] = data["Country"].astype(str).fillna("Unknown")
     data["subregion"] = data["Subregion"].astype(str).fillna("Unknown")
     data["region"] = data["Region"].astype(str).fillna("Unknown")
@@ -282,7 +297,7 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["is_historic"] = (data.get("Historic", pd.Series(dtype=str)).fillna("No").astype(str) == "Yes").astype(int)
 
     # 4. Frequency Pacing
-    for col in ["country", "disaster_subtype", "country_disaster"]:
+    for col in ["country", "disaster_subtype", "country_disaster", "classification_key"]:
         freq = data[col].value_counts()
         data[f"{col}_freq"] = np.log1p(data[col].map(freq).fillna(1.0))
 
@@ -401,9 +416,26 @@ def build_training_data(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict, dict]:
     data["disaster_type_freq_ratio"] = data["disaster_subtype_freq"] / (data["country_disaster_freq"] + 1e-4)
     data["cpi_start_year_ratio"] = data["cpi"] / (data["start_year"] - 1899)
 
-    # 13. Origin Specificity
+    # 13. Origin Specificity & Semantic Keywords
+    origin_str = data["origin"].astype(str).str.lower()
     data["origin_specified"] = (data["origin"] != "Unknown").astype(int)
     data["origin_len"] = data["origin"].apply(len)
+    data["origin_heavy_rain"] = origin_str.str.contains(r"heavy rain|torrential|downpour|intense rain", regex=True).astype(int)
+    data["origin_tropical_cyclone"] = origin_str.str.contains(r"cyclone|typhoon|hurricane|depression|tropical", regex=True).astype(int)
+    data["origin_monsoon"] = origin_str.str.contains(r"monsoon", regex=True).astype(int)
+    data["origin_tectonic"] = origin_str.str.contains(r"tectonic|fault|subduction|seismic", regex=True).astype(int)
+    data["origin_drought"] = origin_str.str.contains(r"drought|dry|deficit|failure", regex=True).astype(int)
+
+    # 14. Event Sequence Log from DisNo.
+    dis_no_str = data.get("DisNo.", pd.Series(dtype=str)).astype(str)
+    def get_seq(s):
+        try:
+            parts = s.split("-")
+            return int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else 0
+        except:
+            return 0
+    data["year_event_seq"] = dis_no_str.apply(get_seq)
+    data["year_event_seq_log"] = np.log1p(data["year_event_seq"])
 
     data["risk_level"] = labels
     data["continuous_severity"] = cont_score
@@ -428,7 +460,8 @@ def make_preprocessor() -> ColumnTransformer:
                 Pipeline(
                     [
                         ("imputer", SimpleImputer(strategy="constant", fill_value="Unknown")),
-                        ("encoder", TargetEncoder(target_type="multiclass", cv=5, smooth="auto", random_state=42)),
+                        ("encoder", TargetEncoder(cv=5, smooth="auto", random_state=42)),
+                        ("scaler", RobustScaler()),
                     ]
                 ),
                 CATEGORICAL_FEATURES,
@@ -624,9 +657,10 @@ def main():
     lgb_reg.fit(X_train_trans, y_train_cont)
 
     # 7. Grand Super-Ensemble
-    print("7/7 Constructing Grand Super-Ensemble with 87-Feature Optimized Calibration...")
+    print("7/7 Constructing Grand Super-Ensemble with 96-Feature Calibrated Threshold Optimization...")
     # Optimal weights mapped to: [xgb, cb, lgb, et, rf, reg]
     weights = [0.217, 0.235, 0.181, 0.120, 0.125, 0.121]
+    multipliers = [1.0, 0.9948, 0.9307, 0.9526]
     ensemble_estimator = DualTaskSuperEnsemble(
         xgb=xgb_clf,
         cb=cb_clf,
@@ -639,10 +673,11 @@ def main():
         weights=weights,
         thresholds=cleaning_summary["severity_score_quartiles"],
         classes=target_encoder.classes_,
+        multipliers=multipliers,
     )
 
     blend_proba = ensemble_estimator.predict_proba(X_test_trans)
-    blend_preds = blend_proba.argmax(axis=1)
+    blend_preds = ensemble_estimator.predict(X_test_trans)
 
     # Wrap models into pipelines with preprocessor
     rf_pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", rf_clf)])
@@ -726,6 +761,8 @@ def main():
                 "accuracy": blend_eval["accuracy"],
                 "roc_auc_macro": blend_eval["roc_auc_macro"],
                 "macro_f1": blend_eval["macro_f1"],
+                "weights": weights,
+                "multipliers": multipliers,
                 "report": blend_eval["report"],
                 "confusion_matrix": blend_eval["confusion_matrix"],
             },

@@ -111,6 +111,9 @@ def _prepare_features(
     external_ids: str = "",
     river_basin: str = "",
     gadm_admin_units: str = "",
+    classification_key: str = "Unknown",
+    iso: str = "Unknown",
+    year_event_seq: int = 1,
 ) -> pd.DataFrame:
     scale_stats = _encoders.get("scale_stats", {}) if _encoders else {}
     stats = scale_stats.get(magnitude_scale, {"mean": 0.0, "std": 1.0})
@@ -207,6 +210,7 @@ def _prepare_features(
     country_freq = float(np.log1p(100.0))
     subtype_freq = float(np.log1p(50.0))
     country_disaster_freq = float(np.log1p(25.0))
+    classification_key_freq = float(np.log1p(30.0))
 
     # Novel 87-feature extensions
     ext_id_str = str(external_ids or "").strip()
@@ -231,14 +235,24 @@ def _prepare_features(
     cpi_start_year_ratio = float(cpi_val / max(1, year - 1899))
 
     origin_str = str(origin or "Unknown")
+    origin_lower = origin_str.lower()
     origin_specified = 1 if origin_str != "Unknown" else 0
     origin_len = len(origin_str)
+    origin_heavy_rain = 1 if any(k in origin_lower for k in ("heavy rain", "torrential", "downpour", "intense rain")) else 0
+    origin_tropical_cyclone = 1 if any(k in origin_lower for k in ("cyclone", "typhoon", "hurricane", "depression", "tropical")) else 0
+    origin_monsoon = 1 if "monsoon" in origin_lower else 0
+    origin_tectonic = 1 if any(k in origin_lower for k in ("tectonic", "fault", "subduction", "seismic")) else 0
+    origin_drought = 1 if any(k in origin_lower for k in ("drought", "dry", "deficit", "failure")) else 0
+
+    year_event_seq_log = float(np.log1p(max(0, int(year_event_seq or 1))))
 
     row = {
         "disaster_group": str(disaster_group or "Unknown"),
         "disaster_subgroup": str(disaster_subgroup or "Unknown"),
         "disaster_type": dtype_str,
         "disaster_subtype": dsubtype_str,
+        "classification_key": str(classification_key or "Unknown"),
+        "iso": str(iso or "Unknown"),
         "country": str(country or "Unknown"),
         "subregion": str(subregion or "Unknown"),
         "region": str(region or "Unknown"),
@@ -271,6 +285,7 @@ def _prepare_features(
         "country_freq": country_freq,
         "disaster_subtype_freq": subtype_freq,
         "country_disaster_freq": country_disaster_freq,
+        "classification_key_freq": classification_key_freq,
         "magnitude_missing": magnitude_missing,
         "magnitude_zscore": magnitude_zscore,
         "magnitude_log": magnitude_log,
@@ -322,6 +337,12 @@ def _prepare_features(
         "cpi_start_year_ratio": cpi_start_year_ratio,
         "origin_specified": origin_specified,
         "origin_len": origin_len,
+        "origin_heavy_rain": origin_heavy_rain,
+        "origin_tropical_cyclone": origin_tropical_cyclone,
+        "origin_monsoon": origin_monsoon,
+        "origin_tectonic": origin_tectonic,
+        "origin_drought": origin_drought,
+        "year_event_seq_log": year_event_seq_log,
     }
     return pd.DataFrame([row])
 
@@ -355,6 +376,9 @@ def predict_risk_ml(
     external_ids: str = "",
     river_basin: str = "",
     gadm_admin_units: str = "",
+    classification_key: str = "Unknown",
+    iso: str = "Unknown",
+    year_event_seq: int = 1,
 ) -> dict:
     """Predict disaster impact severity using the multi-model super-ensemble."""
     if not ml_model_available():
@@ -391,6 +415,9 @@ def predict_risk_ml(
         external_ids=external_ids,
         river_basin=river_basin,
         gadm_admin_units=gadm_admin_units,
+        classification_key=classification_key,
+        iso=iso,
+        year_event_seq=year_event_seq,
     )
 
     def format_prediction(model):
@@ -422,5 +449,5 @@ def predict_risk_ml(
         "catboost_standalone": {**catboost, "model": "Tuned CatBoostClassifier"} if catboost else None,
         "lightgbm_standalone": {**lightgbm, "model": "Tuned LGBMClassifier"} if lightgbm else None,
         "baseline": {**baseline, "model": "RandomForestClassifier"} if baseline else None,
-        "note": "Trained on real EM-DAT records with 87 physical, emergency response, financial aid, and dual-task continuous severity features.",
+        "note": "Trained on real EM-DAT records with 96 physical, emergency response, financial aid, and dual-task continuous severity features.",
     }
