@@ -105,3 +105,18 @@ class DualTaskSuperEnsemble(BaseEstimator, ClassifierMixin):
             mult = np.array(self.multipliers)
             return (proba * mult).argmax(axis=1)
         return proba.argmax(axis=1)
+
+    def predict_severity_index(self, X):
+        """Predict continuous disaster severity index (0.0 - 100.0) via dual-task regression."""
+        if self.cb_reg is not None and self.xgb_reg is not None:
+            pred_cont = 0.60 * self.cb_reg.predict(X) + 0.40 * self.xgb_reg.predict(X)
+        elif self.xgb_reg is not None:
+            pred_cont = self.xgb_reg.predict(X)
+        elif self.cb_reg is not None:
+            pred_cont = self.cb_reg.predict(X)
+        elif self.lgb_reg is not None:
+            pred_cont = self.lgb_reg.predict(X)
+        else:
+            pred_cont = np.full(len(X), 0.5)
+        return np.clip(pred_cont * 100.0, 0.0, 100.0)
+

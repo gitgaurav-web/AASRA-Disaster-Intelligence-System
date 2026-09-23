@@ -72,6 +72,28 @@ export default function LiveRiskInspector({ habitation, onClose }) {
               </span>
             </div>
 
+            {/* Continuous Severity Index (DSI) */}
+            {telemetry.ml_ai_engine.operational_metrics?.severity_index !== undefined && (
+              <div className="bg-slate-900/90 border border-slate-700/60 rounded p-2.5 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-300 font-semibold">Continuous Disaster Severity Index:</span>
+                  <span className="font-mono font-bold text-amber-400 text-sm">
+                    {telemetry.ml_ai_engine.operational_metrics.severity_index} / 100
+                  </span>
+                </div>
+                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-600 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, telemetry.ml_ai_engine.operational_metrics.severity_index))}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                  <span>Catastrophe Risk: {telemetry.ml_ai_engine.operational_metrics.catastrophe_probability || "N/A"}</span>
+                  <span>Emergency Staging: {telemetry.ml_ai_engine.operational_metrics.emergency_escalation_probability || "N/A"}</span>
+                </div>
+              </div>
+            )}
+
             {/* SIH Operational Quality & Reliability Scorecard */}
             <div className="bg-slate-900/90 border border-slate-700/60 rounded p-2.5 space-y-2">
               <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex justify-between items-center">
