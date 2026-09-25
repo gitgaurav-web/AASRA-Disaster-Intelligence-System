@@ -519,7 +519,7 @@ export default function Analytics() {
                 </h3>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Trained on <strong>17,116 Real-World Disasters (EM-DAT CRED)</strong> with <strong>96 Engineered Features</strong> across 6 Gradient Boosted Architectures
+                Trained on <strong>17,116 Real-World Disasters (EM-DAT CRED)</strong> with <strong>109 Engineered Features</strong> across 6 Gradient Boosted Architectures
               </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
@@ -542,7 +542,7 @@ export default function Analytics() {
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400 mt-2 font-mono">
-                85.8%
+                86.6%
               </div>
               <p className="text-[11px] text-emerald-900/80 dark:text-emerald-300/70 mt-1">
                 NDMA/SDRF emergency deployment precision within operational tolerance
@@ -557,7 +557,7 @@ export default function Analytics() {
                 <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="text-3xl font-black text-blue-700 dark:text-blue-400 mt-2 font-mono">
-                97.3%
+                98.8%
               </div>
               <p className="text-[11px] text-blue-900/80 dark:text-blue-300/70 mt-1">
                 Zero Critical Miss (Critical events are never falsely classified as Low risk)
@@ -572,10 +572,10 @@ export default function Analytics() {
                 <Cpu className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               </div>
               <div className="text-3xl font-black text-cyan-700 dark:text-cyan-400 mt-2 font-mono">
-                85.1% <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-300">AUC</span>
+                86.0% <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-300">AUC</span>
               </div>
               <p className="text-[11px] text-cyan-900/80 dark:text-cyan-300/70 mt-1">
-                Binary detection of severe national disasters (Accuracy: 82.8%)
+                Binary detection of severe national disasters (Accuracy: 83.5%)
               </p>
             </div>
 

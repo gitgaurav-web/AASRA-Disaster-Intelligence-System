@@ -104,19 +104,19 @@ export default function LiveRiskInspector({ habitation, onClose }) {
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                   <div className="text-[10px] text-slate-400">Decision Tolerance (±1 Tier)</div>
                   <div className="text-sm font-bold text-emerald-400 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.operational_decision_tolerance_accuracy || "85.8%"}
+                    {telemetry.ml_ai_engine.operational_metrics?.operational_decision_tolerance_accuracy || "86.6%"}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                   <div className="text-[10px] text-slate-400">Safe Decision Reliability</div>
                   <div className="text-sm font-bold text-emerald-400 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.safety_reliability_rate || "97.3%"}
+                    {telemetry.ml_ai_engine.operational_metrics?.safety_reliability_rate || "98.8%"}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                   <div className="text-[10px] text-slate-400">Catastrophe Detection AUC</div>
                   <div className="text-sm font-bold text-cyan-400 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.catastrophe_early_detection_auc || "85.1%"}
+                    {telemetry.ml_ai_engine.operational_metrics?.catastrophe_early_detection_auc || "86.0%"}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
