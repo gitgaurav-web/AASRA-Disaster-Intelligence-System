@@ -101,7 +101,7 @@ where buffer radius $R \in [1.5, 5.0]\text{ km}$ scales dynamically with the cal
 
 ### 2. Obstacle-Aware Evacuation Routing (Hazard Avoidance)
 Standard routing algorithms attempt to draw straight lines or use road networks that cut directly through flooded or landslide-prone zones. AASRA's offline engine:
-- Projects the direct vector from origin to candidate shelters and tests for geometric circle intersection against active Red Zones.
+- Projects the direct vector from origin to candidate shelters and tests for geometric circle intersection against active Red Zone.
 - If a route penetrates a danger buffer, it calculates **tangent bypass waypoints with a 35% clearance buffer** around the hazard perimeter.
 - Visibly flags the corridor with an illuminated cyan dashed line and **"🛡️ Hazard Avoidance: Bypasses Active Red-Zone Perimeter"** notification.
 
