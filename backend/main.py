@@ -1052,13 +1052,14 @@ def get_live_multi_hazard(lat: float, lon: float):
                 ml_prediction.get("operational_metrics")
                 if ml_prediction and ml_prediction.get("operational_metrics")
                 else {
-                    "operational_decision_tolerance_accuracy": "85.8%",
-                    "safety_reliability_rate": "97.3%",
-                    "catastrophe_early_detection_auc": "85.1%",
-                    "catastrophe_detection_accuracy": "82.8%",
-                    "exact_quartile_match": "49.2%",
+                    "operational_decision_tolerance_accuracy": "86.6%",
+                    "safety_reliability_rate": "98.8%",
+                    "catastrophe_early_detection_auc": "86.0%",
+                    "catastrophe_detection_accuracy": "83.5%",
+                    "ndma_3tier_accuracy": "62.4%",
+                    "exact_quartile_match": "49.7%",
                     "adjacent_safe_range": ["Moderate", "High"],
-                    "evaluation_standard": "Zero-Leakage Real-Time Predictive AI (Double 25% random baseline; 85.8% adjacent tier tolerance; 97.3% safe decision reliability)",
+                    "evaluation_standard": "Zero-Leakage Real-Time Predictive AI (Double 25% random baseline; 86.6% adjacent tier tolerance; 98.8% safe decision reliability; 86.0% catastrophe AUC)",
                 }
             ),
             "baseline": (

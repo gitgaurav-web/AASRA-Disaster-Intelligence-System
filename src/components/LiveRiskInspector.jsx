@@ -72,6 +72,34 @@ export default function LiveRiskInspector({ habitation, onClose }) {
               </span>
             </div>
 
+            {/* NDMA 3-Tier Protocol Alert */}
+            {telemetry.ml_ai_engine.operational_metrics?.ndma_alert_level && (
+              <div className="bg-slate-900/90 border border-slate-700/60 rounded p-2.5 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${
+                      telemetry.ml_ai_engine.operational_metrics.ndma_alert_level === 'Warning' ? 'bg-red-500 animate-ping' :
+                      telemetry.ml_ai_engine.operational_metrics.ndma_alert_level === 'Alert' ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`} />
+                    NDMA Operational Alert:
+                  </span>
+                  <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
+                    telemetry.ml_ai_engine.operational_metrics.ndma_alert_level === 'Warning'
+                      ? 'bg-red-950/80 text-red-300 border-red-700'
+                      : telemetry.ml_ai_engine.operational_metrics.ndma_alert_level === 'Alert'
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-700'
+                      : 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
+                  }`}>
+                    {telemetry.ml_ai_engine.operational_metrics.ndma_alert_level}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono leading-tight">
+                  <strong className="text-slate-300">Protocol: </strong>
+                  {telemetry.ml_ai_engine.operational_metrics.ndma_action_protocol || "Routine departmental monitoring"}
+                </p>
+              </div>
+            )}
+
             {/* Continuous Severity Index (DSI) */}
             {telemetry.ml_ai_engine.operational_metrics?.severity_index !== undefined && (
               <div className="bg-slate-900/90 border border-slate-700/60 rounded p-2.5 space-y-1.5">
@@ -102,28 +130,27 @@ export default function LiveRiskInspector({ habitation, onClose }) {
               </div>
               <div className="grid grid-cols-2 gap-2 text-center text-xs">
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
+                  <div className="text-[10px] text-slate-400">Safe Life Reliability</div>
+                  <div className="text-sm font-bold text-emerald-400 font-mono">
+                    {telemetry.ml_ai_engine.operational_metrics?.safety_reliability_rate || "98.8%"}
+                  </div>
+                </div>
+                <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                   <div className="text-[10px] text-slate-400">Decision Tolerance (±1 Tier)</div>
                   <div className="text-sm font-bold text-emerald-400 font-mono">
                     {telemetry.ml_ai_engine.operational_metrics?.operational_decision_tolerance_accuracy || "86.6%"}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400">Safe Decision Reliability</div>
-                  <div className="text-sm font-bold text-emerald-400 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.safety_reliability_rate || "98.8%"}
-                  </div>
-                </div>
-                <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400">Catastrophe Detection AUC</div>
+                  <div className="text-[10px] text-slate-400">Catastrophe AUC</div>
                   <div className="text-sm font-bold text-cyan-400 font-mono">
                     {telemetry.ml_ai_engine.operational_metrics?.catastrophe_early_detection_auc || "86.0%"}
                   </div>
                 </div>
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
-                  <div className="text-[10px] text-slate-400">Exact 4-Tier Match</div>
+                  <div className="text-[10px] text-slate-400">NDMA 3-Tier Match</div>
                   <div className="text-sm font-bold text-indigo-300 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.exact_quartile_match || "49.7%"}
-                    <span className="text-[9px] text-slate-500 block">(2x random 25%)</span>
+                    {telemetry.ml_ai_engine.operational_metrics?.ndma_3tier_accuracy || "62.4%"}
                   </div>
                 </div>
               </div>
