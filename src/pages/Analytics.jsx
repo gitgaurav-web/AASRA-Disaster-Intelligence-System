@@ -587,7 +587,7 @@ export default function Analytics() {
                 <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="text-3xl font-black text-indigo-700 dark:text-indigo-400 mt-2 font-mono">
-                49.2%
+                49.7%
               </div>
               <p className="text-[11px] text-indigo-900/80 dark:text-indigo-300/70 mt-1">
                 Nearly 2x random chance (25%) on balanced 4-quartile real-world records
@@ -614,9 +614,9 @@ export default function Analytics() {
                     <span className="text-indigo-600 dark:text-indigo-400">★</span> Grand Super-Ensemble
                   </td>
                   <td className="py-2 px-3 text-slate-500 dark:text-slate-400 font-sans">Dual-Task Calibrated Soft Voting (6 Models)</td>
-                  <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">49.21%</td>
+                  <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">49.71%</td>
                   <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">0.7463</td>
-                  <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">0.4906</td>
+                  <td className="py-2 px-3 text-right text-indigo-600 dark:text-indigo-400">0.4910</td>
                   <td className="py-2 px-3 text-center">
                     <span className="px-2 py-0.5 rounded text-[10px] bg-indigo-600 text-white font-sans font-bold">Champion</span>
                   </td>

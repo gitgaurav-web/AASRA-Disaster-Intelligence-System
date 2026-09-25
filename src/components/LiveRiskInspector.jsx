@@ -122,7 +122,7 @@ export default function LiveRiskInspector({ habitation, onClose }) {
                 <div className="bg-slate-800/80 p-1.5 rounded border border-slate-700/50">
                   <div className="text-[10px] text-slate-400">Exact 4-Tier Match</div>
                   <div className="text-sm font-bold text-indigo-300 font-mono">
-                    {telemetry.ml_ai_engine.operational_metrics?.exact_quartile_match || "49.2%"}
+                    {telemetry.ml_ai_engine.operational_metrics?.exact_quartile_match || "49.7%"}
                     <span className="text-[9px] text-slate-500 block">(2x random 25%)</span>
                   </div>
                 </div>

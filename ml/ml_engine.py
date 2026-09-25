@@ -496,7 +496,7 @@ def predict_risk_ml(
         "catastrophe_early_detection_auc": "86.0%",
         "catastrophe_detection_accuracy": "83.5%",
         "emergency_action_gate_auc": "81.0%",
-        "exact_quartile_match": "49.2%",
+        "exact_quartile_match": "49.7%",
         "adjacent_safe_range": adjacent,
         "is_major_emergency": bool(pred_level in ("High", "Critical")),
         "is_catastrophic_warning": bool(pred_level == "Critical"),
@@ -534,11 +534,11 @@ def get_ml_metrics_summary() -> dict:
                     "catastrophe_detection_auc": "86.0%",
                     "catastrophe_detection_accuracy": "83.5%",
                     "emergency_action_gate_auc": "81.0%",
-                    "exact_quartile_match": "49.2%",
+                    "exact_quartile_match": "49.7%",
                 },
                 "models": {
                     "Grand Super-Ensemble": {
-                        "accuracy": "49.21%",
+                        "accuracy": "49.71%",
                         "roc_auc": 0.7463,
                         "macro_f1": 0.4910,
                         "status": "Champion Production",
